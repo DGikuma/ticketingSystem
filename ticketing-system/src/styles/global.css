@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.toast-success-progress,
+.toast-error-progress {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Success: Green bar */
+.toast-success-progress::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  width: 100%;
+  background: #22c55e; /* Tailwind green-500 */
+  animation: toast-progress-bar 5s linear forwards;
+}
+
+/* Error: Red bar */
+.toast-error-progress::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  width: 100%;
+  background: #ef4444; /* Tailwind red-500 */
+  animation: toast-progress-bar 5s linear forwards;
+}
+
+@keyframes toast-progress-bar {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+@keyframes toastFill {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+.animate-toast-fill {
+  animation: toastFill linear;
+  animation-duration: var(--toastify-duration, 5000ms); /* Respect autoClose */
+  transform-origin: left;
+}
+
+html {
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+@media (prefers-color-scheme: dark) {
+  html {
+    background-color: #1f2937; /* Tailwind gray-800 */
+    color: #e5e7eb; /* Tailwind gray-200 */
+  }
+}
+
+
+
+

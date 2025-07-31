@@ -1,0 +1,48 @@
+.ticket-spinner-overlay {
+  @apply fixed inset-0 z-50 flex items-center justify-center bg-white/70 dark:bg-black/70 backdrop-blur-md transition-opacity duration-1000;
+}
+
+.ticket-spinner {
+  width: 80px;
+  height: 40px;
+  background: linear-gradient(135deg, #3b82f6, #60a5fa);
+  border-radius: 5px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+  animation: flyAway 1.5s infinite ease-in-out;
+  transform-origin: center;
+  clip-path: polygon(0 20%, 15% 0, 85% 0, 100% 20%, 100% 80%, 85% 100%, 15% 100%, 0 80%);
+  transition: all 0.4s ease;
+}
+
+/* Dark mode version */
+.dark .ticket-spinner-dark {
+  background: linear-gradient(135deg, #0ea5e9, #22d3ee);
+}
+
+/* Disappearance */
+.fade-out {
+  opacity: 1;
+  animation: fadeOut 1s ease-in-out 9s forwards;
+}
+
+@keyframes flyAway {
+  0% {
+    transform: translateY(0px) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-60px) rotate(10deg) scale(1.1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(-120px) rotate(-20deg) scale(0.8);
+    opacity: 0.3;
+  }
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}

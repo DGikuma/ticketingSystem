@@ -1,0 +1,40 @@
+/* AnimatedBackground.css */
+.ticket-background {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  transition: background 0.5s ease;
+  pointer-events: none;
+}
+
+.ticket-background.dark {
+  background: radial-gradient(ellipse at center, #1f2937 0%, #111827 100%);
+}
+
+.ticket-background.light {
+  background: radial-gradient(ellipse at center, #f0f9ff 0%, #ffffff 100%);
+}
+
+.icon-bubble {
+  position: absolute;
+  color: white;
+  opacity: 0.15;
+  animation: float 20s linear infinite;
+}
+
+.ticket-background.light .icon-bubble {
+  color: #1e293b;
+}
+
+.icon-0 { left: 5%; top: 85%; animation-delay: 0s; transform: scale(1.2); }
+.icon-1 { left: 20%; top: 88%; animation-delay: 2s; }
+.icon-2 { left: 40%; top: 90%; animation-delay: 4s; }
+.icon-3 { left: 60%; top: 87%; animation-delay: 1s; }
+.icon-4 { left: 80%; top: 91%; animation-delay: 3s; }
+
+@keyframes float {
+  0% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-80vh) scale(1.1); }
+  100% { transform: translateY(-160vh) scale(1); }
+}
