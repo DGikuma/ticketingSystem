@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
-import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import {jwtDecode} from 'jwt-decode';
 
 interface DecodedUser {
   id: number;
-  name: string;
+  name?: string; // May be optional in token
   email: string;
-  role: 'admin' | 'support-agent' | 'user';
-  exp: number;
+  role: 'admin' | 'agent' | 'user';
 }
 
 export const useAuth = () => {
@@ -19,16 +18,24 @@ export const useAuth = () => {
   useEffect(() => {
     const fetchToken = async () => {
       try {
-        const res = await fetch('/api/auth/token', {
+        const res = await fetch('http://localhost:4000/api/auth/refresh', {
+          method: 'POST',
           credentials: 'include',
         });
 
         if (!res.ok) throw new Error('Not authenticated');
-        const data = await res.json();
-        const decoded: DecodedUser = jwtDecode(data.accessToken);
 
+        const data = await res.json(); // { token: string }
+
+        // ✅ Decode the JWT to get user info
+        const decoded: DecodedUser = jwtDecode(data.token);
+
+        // ✅ Store in state and localStorage
         setUser(decoded);
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(decoded));
       } catch (err) {
+        console.error('Auth error:', err);
         setUser(null);
       } finally {
         setLoading(false);
@@ -44,6 +51,7 @@ export const useAuth = () => {
       credentials: 'include',
     });
 
+    localStorage.clear();
     setUser(null);
     toast.success('Logged out');
     navigate('/login');

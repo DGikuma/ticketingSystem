@@ -42,8 +42,8 @@ router.post('/login', async (req, res) => {
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
+      secure: process.env.NODE_ENV === 'production', // ✅ Only true in production
+      sameSite: 'lax', // 'lax' is safer for dev, still secure
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 

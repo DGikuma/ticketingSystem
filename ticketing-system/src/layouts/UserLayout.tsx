@@ -105,9 +105,24 @@ export default function UserLayout() {
           <h1 className="text-xl font-bold">User Dashboard</h1>
 
           <div className="flex items-center gap-4 relative">
-            <button onClick={() => setDarkMode(!darkMode)}>
-              {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
+          <div
+            className="w-14 h-7 flex items-center bg-gray-300 dark:bg-gray-700 rounded-full px-1 cursor-pointer transition-colors duration-300"
+            onClick={() => setDarkMode(!darkMode)}
+          >
+            <motion.div
+              className="w-5 h-5 bg-white rounded-full shadow-md flex items-center justify-center"
+              layout
+              transition={{ type: 'spring', stiffness: 700, damping: 30 }}
+              initial={false}
+              animate={{ x: darkMode ? 28 : 0 }}
+            >
+              {darkMode ? (
+                <Moon size={14} className="text-gray-800" />
+              ) : (
+                <Sun size={14} className="text-yellow-500" />
+              )}
+            </motion.div>
+          </div>
             <button onClick={() => setShowDropdown(prev => !prev)}>
               <UserCircle size={28} />
             </button>
@@ -210,4 +225,4 @@ function SidebarLink({
       <Tooltip id={label} place="right" />
     </motion.a>
   );
-}
+}  

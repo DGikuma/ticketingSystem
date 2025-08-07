@@ -1,233 +1,242 @@
+'use client';
+
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
-import { FileText } from 'lucide-react';
-// import your auth hook
+import { FileText, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 interface FormData {
   subject: string;
   description: string;
   file?: FileList;
-  confirmation?: boolean;
 }
 
-export default function SubmitConcern() {
+const SubmitConcern: React.FC = () => {
+  const { user } = useAuth(); // ✅ Only call this once
   const [step, setStep] = useState(1);
-  const [filePreview, setFilePreview] = useState<string | null>(null);
-  const [fileInfo, setFileInfo] = useState<File | null>(null);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
 
-  const { user } = useAuth(); // ✅ get current user
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
 
   const {
     register,
     handleSubmit,
     watch,
+    reset,
     formState: { errors },
-    trigger,
   } = useForm<FormData>();
 
   const file = watch('file');
 
-  const handleNext = async () => {
-    const valid = await trigger(step === 1 ? ['subject'] : ['description']);
-    if (valid) setStep((s) => s + 1);
-  };
+  const onSubmit = async (data: FormData) => {
+    if (!user?.id) {
+      toast.error('User not logged in. Please log in again.');
+      return;
+    }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
-    setFileInfo(selectedFile);
-    if (selectedFile.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = () => setFilePreview(reader.result as string);
-      reader.readAsDataURL(selectedFile);
-    } else {
-      setFilePreview(null);
+    setIsSubmitting(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('subject', data.subject);
+      formData.append('description', data.description);
+      formData.append('created_by', user.id.toString());
+
+      if (data.file?.[0]) {
+        formData.append('file', data.file[0]);
+      }
+
+      const res = await fetch('/api/tickets', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to create ticket');
+      }
+
+      toast.success('Concern submitted successfully!');
+      setIsSuccessModalOpen(true);
+    } catch (err) {
+      console.error('Submission error:', err);
+      toast.error('Something went wrong. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-    const onSubmit = async (data: FormData) => {
-      try {
-        const formData = new FormData();
-        formData.append('subject', data.subject);
-        formData.append('description', data.description);
-        formData.append('priority', 'high');
-        formData.append('created_by', user?.id || '');
+  const closeSuccessModal = () => {
+    setIsSuccessModalOpen(false);
+    reset();
+    setStep(1);
+  };
 
-        if (data.file && data.file[0]) {
-          formData.append('file', data.file[0]);
-        }
-
-        const response = await fetch('/api/tickets', {
-          method: 'POST',
-          body: formData,
-          credentials: 'include', // if your backend uses cookies
-        });
-
-        if (!response.ok) throw new Error('Failed to create ticket');
-
-        toast.success('Ticket submitted successfully!', { icon: '📨' });
-        setShowSuccessModal(true);
-      } catch (error) {
-        console.error('Submission error:', error);
-        toast.error('Failed to submit Ticket. Please try again.');
-      }
-    };
+  // Framer Motion variants
+  const stepVariants = {
+    initial: { opacity: 0, x: 50 },
+    animate: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: -50 },
+  };
 
   return (
-    <div className="max-w-xl mx-auto p-6 bg-white dark:bg-gray-900 rounded-lg shadow">
-      <h2 className="text-2xl font-bold mb-4">Submit a Concern</h2>
+    <div className="max-w-xl mx-auto p-6 bg-white dark:bg-gray-900 rounded-lg shadow-md">
+      <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Submit a Concern</h2>
 
+      {/* Stepper */}
       <div className="mb-6">
         <div className="flex justify-between text-sm font-medium text-gray-500 dark:text-gray-400">
-          <div className={step >= 1 ? 'text-indigo-600' : ''}>1. Subject</div>
-          <div className={step >= 2 ? 'text-indigo-600' : ''}>2. Description</div>
-          <div className={step >= 3 ? 'text-indigo-600' : ''}>3. Attachments</div>
-          <div className={step >= 4 ? 'text-indigo-600' : ''}>4. Confirm</div>
+          <div className={step >= 1 ? 'text-indigo-600' : ''}>1. Details</div>
+          <div className={step >= 2 ? 'text-indigo-600' : ''}>2. Attachment</div>
+          <div className={step >= 3 ? 'text-indigo-600' : ''}>3. Review</div>
         </div>
-        <div className="h-2 w-full bg-gray-200 dark:bg-gray-700 rounded mt-2">
-          <div
-            className="h-2 bg-indigo-500 rounded transition-all"
-            style={{ width: `${(step - 1) * 33.3}%` }}
+        <div className="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded mt-2">
+          <motion.div
+            className="bg-indigo-600 h-2 rounded"
+            initial={{ width: 0 }}
+            animate={{ width: `${(step / 3) * 100}%` }}
+            transition={{ duration: 0.4 }}
           />
         </div>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {step === 1 && (
-          <div>
-            <label className="block mb-1 text-sm font-medium">Subject</label>
-            <input
-              {...register('subject', { required: 'Subject is required.' })}
-              className="w-full p-2 border rounded dark:bg-gray-800 dark:text-white"
-            />
-            {errors.subject && <p className="text-red-500 text-xs mt-1">{errors.subject.message}</p>}
-          </div>
-        )}
-
-        {step === 2 && (
-          <div>
-            <label className="block mb-1 text-sm font-medium">Description</label>
-            <textarea
-              {...register('description', { required: 'Description is required.' })}
-              className="w-full p-2 border rounded dark:bg-gray-800 dark:text-white"
-              rows={4}
-            ></textarea>
-            {errors.description && <p className="text-red-500 text-xs mt-1">{errors.description.message}</p>}
-          </div>
-        )}
-
-        {step === 3 && (
-          <div>
-            <label className="block mb-1 text-sm font-medium">Attachment (Optional)</label>
-            <input
-              type="file"
-              {...register('file')}
-              onChange={handleFileChange}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:border file:rounded file:border-gray-300 file:text-sm file:bg-gray-50 file:text-gray-700 hover:file:bg-gray-100"
-            />
-
-            <AnimatePresence>
-              {filePreview && (
-                <motion.img
-                  key="preview"
-                  src={filePreview}
-                  alt="Preview"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="mt-3 max-h-40 rounded shadow"
+      {/* Form */}
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <AnimatePresence mode="wait">
+          {step === 1 && (
+            <motion.div key="step1" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.4 }}>
+              <div className="mb-4">
+                <label className="block mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">Subject</label>
+                <input
+                  {...register('subject', { required: 'Subject is required' })}
+                  className="w-full px-4 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                  placeholder="Enter subject"
                 />
-              )}
+                {errors.subject && <p className="text-red-500 text-sm mt-1">{errors.subject.message}</p>}
+              </div>
 
-              {!filePreview && fileInfo && (
-                <motion.div
-                  key="file-icon"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="mt-2 flex items-center gap-2 text-sm"
+              <div className="mb-4">
+                <label className="block mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">Description</label>
+                <textarea
+                  {...register('description', { required: 'Description is required' })}
+                  rows={4}
+                  className="w-full px-4 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                  placeholder="Enter your concern details"
+                />
+                {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>}
+              </div>
+
+              <button
+                type="button"
+                className="mt-4 px-6 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+                onClick={() => setStep(2)}
+              >
+                Next
+              </button>
+            </motion.div>
+          )}
+
+          {step === 2 && (
+            <motion.div key="step2" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.4 }}>
+              <div className="mb-4">
+                <label className="block mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">Optional Attachment</label>
+                <input
+                  type="file"
+                  {...register('file')}
+                  className="w-full px-4 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                />
+              </div>
+
+              <div className="flex justify-between mt-4">
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="px-6 py-2 bg-gray-400 text-white rounded hover:bg-gray-500 transition"
                 >
-                  <FileText className="w-4 h-4 text-gray-600 dark:text-gray-300" /> {fileInfo.name}
-                </motion.div>
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep(3)}
+                  className="px-6 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+                >
+                  Next
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {step === 3 && (
+            <motion.div key="step3" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.4 }}>
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Review</h3>
+              <p className="mb-2 text-gray-700 dark:text-gray-300"><strong>Subject:</strong> {watch('subject')}</p>
+              <p className="mb-2 text-gray-700 dark:text-gray-300"><strong>Description:</strong> {watch('description')}</p>
+              {file?.[0] && (
+                <p className="mb-4 text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <FileText size={16} /> {file[0].name}
+                </p>
               )}
-            </AnimatePresence>
-          </div>
-        )}
 
-        {step === 4 && (
-          <div>
-            <div className="flex items-start gap-2">
-              <input
-                type="checkbox"
-                {...register('confirmation', {
-                  required: 'Please confirm before submitting.',
-                })}
-                className="mt-1"
-              />
-              <label className="text-sm">
-                I confirm that the above information is accurate and complete.
-              </label>
-            </div>
-            {errors.confirmation && (
-              <p className="text-red-500 text-xs mt-1">{errors.confirmation.message}</p>
-            )}
-          </div>
-        )}
-
-        <div className="flex justify-between">
-          {step > 1 && (
-            <button
-              type="button"
-              onClick={() => setStep((s) => s - 1)}
-              className="px-4 py-2 bg-gray-300 dark:bg-gray-700 text-black dark:text-white rounded"
-            >
-              Back
-            </button>
+              <div className="flex justify-between">
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  className="px-6 py-2 bg-gray-400 text-white rounded hover:bg-gray-500 transition"
+                >
+                  Back
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded flex items-center justify-center"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="animate-spin w-4 h-4 mr-2" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="w-4 h-4 mr-2" />
+                      Submit
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
           )}
-          {step < 4 ? (
-            <button
-              type="button"
-              onClick={handleNext}
-              className="px-4 py-2 bg-indigo-600 text-white rounded"
-            >
-              Next
-            </button>
-          ) : (
-            <button
-              type="submit"
-              className="px-4 py-2 bg-green-600 text-white rounded"
-            >
-              Submit
-            </button>
-          )}
-        </div>
+        </AnimatePresence>
       </form>
 
-      <AnimatePresence>
-        {showSuccessModal && (
+      {/* ✅ Success Modal with dark/light blur */}
+      {isSuccessModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="absolute inset-0 backdrop-blur-md bg-white/60 dark:bg-gray-900/60 transition-all duration-300"></div>
+
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black bg-opacity-40 flex items-center justify-center"
+            className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg z-50 w-full max-w-md text-center"
           >
-            <motion.div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-xl max-w-md text-center">
-              <h3 className="text-xl font-bold mb-2">Success 🎉</h3>
-              <p className="text-sm mb-4">Your concern has been submitted successfully.</p>
-              <button
-                onClick={() => setShowSuccessModal(false)}
-                className="px-4 py-2 bg-indigo-600 text-white rounded"
-              >
-                Close
-              </button>
-            </motion.div>
+            <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">Success!</h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">Your concern has been submitted.</p>
+            <button
+              onClick={closeSuccessModal}
+              className="px-6 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+            >
+              Done
+            </button>
           </motion.div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
     </div>
   );
-}
+};
+
+export default SubmitConcern;

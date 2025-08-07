@@ -2,115 +2,148 @@ import React, { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Ticket } from "@/types/ticket";
+import { toast } from "react-toastify";
+
+import { Ticket } from "../types/tickets";
+
 import { Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-
-const mockTickets: Ticket[] = [
-  {
-    id: 1,
-    subject: "Request for refund",
-    status: "open",
-    department: "Finance",
-    created_at: "2025-07-16",
-    priority: "high",
-    assigned_to: "Agent C",
-  },
-  {
-    id: 2,
-    subject: "Unable to access dashboard",
-    status: "in-progress",
-    department: "IT",
-    created_at: "2025-07-15",
-    priority: "medium",
-    assigned_to: "Agent D",
-  },
-  {
-    id: 3,
-    subject: "Feature request for dark mode",
-    status: "closed",
-    department: "Development",
-    created_at: "2025-07-10",
-    priority: "low",
-    assigned_to: "Agent E",
-  },
-];
+import { jwtDecode } from "jwt-decode";
 
 const PAGE_SIZE = 5;
 
 const UserDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("open");
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [user, setUser] = useState<any>(null);
 
-  const filteredTickets = mockTickets.filter((t) => t.status === activeTab);
+  const [ticketsByStatus, setTicketsByStatus] = useState<Record<string, Ticket[]>>({
+    open: [],
+    "in_progress": [],
+    closed: [],
+  });
+
+  const [totalPagesByStatus, setTotalPagesByStatus] = useState<Record<string, number>>({
+    open: 1,
+    "in_progress": 1,
+    closed: 1,
+  });
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    console.log("[UserDashboard] Token from localStorage:", token);
+
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        console.log("[UserDashboard] Decoded token payload:", decoded);
+        setUser(decoded);
+      } catch (decodeError) {
+        console.error("[UserDashboard] Token decoding failed:", decodeError);
+      }
+    } else {
+      console.warn("[UserDashboard] No token found in localStorage.");
+    }
+  }, []);
+
+  useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 500);
+    return () => clearTimeout(delayDebounce);
+  }, [searchInput]);
 
   const fetchTickets = async () => {
-  setLoading(true);
-  try {
-    const res = await fetch(
-      `http://localhost:4000/api/tickets?status=${activeTab}&search=${search}&page=${page}&limit=${PAGE_SIZE}`,
-      {
-        credentials: "include",
-      }
-    );
-    const data = await res.json();
+    const token = localStorage.getItem("token");
+    console.log("[fetchTickets] Attempting fetch with token:", token);
 
-    // ✅ Defensive checks
-    if (Array.isArray(data.tickets)) {
-      setTickets(data.tickets);
-      setTotalPages(data.totalPages ?? 1);
-    } else {
-      throw new Error("Invalid data shape from API");
+    if (!token) {
+      console.warn("[fetchTickets] No token found, skipping fetch.");
+      return;
     }
-  } catch (error) {
-    console.error("API fetch failed. Falling back to mock data.", error);
 
-    // ✅ Also check mock data exists
-    const filtered = mockTickets.filter(
-      (t) =>
-        t.status === activeTab &&
-        t.subject.toLowerCase().includes(search.toLowerCase())
-    );
+    const url = `http://localhost:4000/api/tickets?status=${activeTab}&search=${search}&page=${page}&limit=${PAGE_SIZE}`;
+    console.log(`[fetchTickets] Fetching: ${url}`);
 
-    setTickets(filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE));
-    setTotalPages(Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)));
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      setLoading(true);
 
-    useEffect(() => {
-      fetchTickets();
-    }, [activeTab, search, page]);
-  
-    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      setSearch(e.target.value);
-      setPage(1); // reset to first page on search
-    };
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-    const statusColors: Record<string, string> = {
+      console.log("[fetchTickets] Response status:", res.status);
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error("[fetchTickets] Fetch error response:", errorData);
+        throw new Error(errorData.error || "Failed to fetch tickets");
+      }
+
+      const data = await res.json();
+      console.log("[fetchTickets] Tickets data received:", data);
+      console.log("[fetchTickets] Ticket statuses:", data.tickets?.map((t: any) => t.status));
+
+      setTicketsByStatus((prev) => ({
+        ...prev,
+        [activeTab]: data.tickets || [],
+      }));
+
+      setTotalPagesByStatus((prev) => ({
+        ...prev,
+        [activeTab]: data.totalPages || 1,
+      }));
+    } catch (error: any) {
+      console.error("[fetchTickets] Exception during fetch:", error);
+      toast.error(error.message || "Failed to fetch tickets");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTickets();
+  }, [activeTab, search, page]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchInput(e.target.value);
+  };
+
+  const statusColors: Record<string, string> = {
     open: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-    "in-progress":
-      "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
+    "in_progress": "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
     closed: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
   };
+
+  console.log("Tickets by status:", ticketsByStatus);
+  console.log("Open Tickets:", ticketsByStatus["open"]);
 
   return (
     <div className="flex min-h-screen bg-muted text-foreground">
       <div className="flex-1 p-4 md:p-6 space-y-4">
         <h1 className="text-2xl font-bold">My Tickets</h1>
 
-        <Tabs value={activeTab} onValueChange={(val) => {
-          setActiveTab(val);
-          setPage(1);
-        }}>
+        {user?.email && (
+          <p className="text-muted-foreground text-sm">
+            Logged in as: <strong>{user.email}</strong>
+          </p>
+        )}
+
+        <Tabs
+          value={activeTab}
+          onValueChange={(val) => {
+            setActiveTab(val);
+            setPage(1);
+          }}
+        >
           <TabsList className="flex gap-2 p-2 rounded-xl bg-gray-100 dark:bg-gray-800 shadow-inner">
-            {["open", "in-progress", "closed"].map((status) => (
+            {["open", "in_progress", "closed"].map((status) => (
               <TabsTrigger
                 key={status}
                 value={status}
@@ -120,91 +153,70 @@ const UserDashboard = () => {
                     : "text-muted-foreground"
                 }`}
               >
-                {status
-                  .replace("-", " ")
-                  .replace(/\b\w/g, (c) => c.toUpperCase())}
+                {status.replace("-", " ").replace(/\b\w/g, (c) => c.toUpperCase())}
               </TabsTrigger>
             ))}
           </TabsList>
 
-          {["open", "in-progress", "closed"].map((status) => (
+          {["open", "in_progress", "closed"].map((status) => (
             <TabsContent key={status} value={status}>
               <div className="space-y-4 mt-4">
                 <Input
                   placeholder="Search tickets..."
-                  value={search}
+                  value={searchInput}
                   onChange={handleSearchChange}
                   className="max-w-sm"
                 />
 
-                {loading ? (
+                {loading && activeTab === status ? (
                   <div className="flex items-center justify-center p-8">
                     <Loader2 className="animate-spin h-6 w-6 text-muted-foreground" />
                   </div>
-                ) : tickets.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">
-                    No tickets found.
-                  </p>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {Array.isArray(tickets) &&
-                      tickets.map((ticket) => (
-                      <Card key={ticket.id}>
-                        <CardHeader>
-                          <CardTitle className="text-base">
-                            {ticket.subject}
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <span>Status:</span>
-                            <Badge
-                              className={statusColors[ticket.status] || ""}
-                            >
-                              {ticket.status}
-                            </Badge>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Priority:</span>
-                            <Badge variant="outline">{ticket.priority}</Badge>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Assigned:</span>
-                            <span>{ticket.assigned_to}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Created:</span>
-                            <span>{ticket.created_at}</span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
+                  <>
+                    <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded max-h-48 overflow-auto">
+                      {JSON.stringify(ticketsByStatus[status], null, 2)}
+                    </pre>
 
-                <div className="flex justify-between items-center pt-4">
-                  <span className="text-sm text-muted-foreground">
-                    Page {page} of {totalPages}
-                  </span>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={page === 1}
-                      onClick={() => setPage((prev) => prev - 1)}
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={page === totalPages}
-                      onClick={() => setPage((prev) => prev + 1)}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
+                  {ticketsByStatus[status]?.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">No tickets found.</p>
+                  ) : (
+                    <>
+                      {console.log(`[Render] Tickets for ${status}:`, ticketsByStatus[status])}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {ticketsByStatus[status].map((ticket) => (
+                          <Card key={ticket.id}>
+                            <CardHeader>
+                              <CardTitle className="text-base">{ticket.subject}</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span>Status:</span>
+                                <Badge className={statusColors[ticket.status] || ""}>
+                                  {ticket.status || "N/A"}
+                                </Badge>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Priority:</span>
+                                <Badge variant="outline">{ticket.priority || "N/A"}</Badge>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Assigned:</span>
+                                <span>{ticket.assigned_to || "Unassigned"}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Created:</span>
+                                <span>{new Date(ticket.created_at).toLocaleDateString() || "N/A"}</span>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  </>
+                )}
               </div>
             </TabsContent>
           ))}

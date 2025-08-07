@@ -8,7 +8,7 @@ export interface Comment {
 
 export interface Ticket {
   id: string;
-  title: string;
+  subject: string;
   description: string;
   status: 'open' | 'in_progress' | 'closed';
   department: string;

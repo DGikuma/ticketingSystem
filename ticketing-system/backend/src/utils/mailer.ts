@@ -1,14 +1,16 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import nodemailer from "nodemailer";
+import nodemailer from 'nodemailer';
 
-console.log("MAILER ENV USER:", process.env.EMAIL_USER);
-console.log("MAILER ENV PASS:", process.env.EMAIL_PASSWORD ? "✅ Loaded" : "❌ MISSING");
+// Log environment values for debugging
+console.log("SMTP Host:", process.env.EMAIL_HOST);
+console.log("SMTP User:", process.env.EMAIL_USER);
+console.log("SMTP Password:", process.env.EMAIL_PASSWORD ? "✅ Present" : "❌ MISSING");
 
 export const transporter = nodemailer.createTransport({
-  host: "mail5016.site4now.net",
-  port: 465,
+  host: process.env.EMAIL_HOST,
+  port: Number(process.env.EMAIL_PORT),
   secure: true,
   pool: true,
   auth: {
@@ -16,12 +18,12 @@ export const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASSWORD,
   },
   tls: {
-    rejectUnauthorized: false,
+    rejectUnauthorized: false, // ✅ for testing or self-signed certs
   },
 });
 
 export const mailOptions = {
-  from: `"Helpdesk Support" <${process.env.EMAIL_USER}>`,
+  from: process.env.EMAIL_FROM || `"Support" <${process.env.EMAIL_USER}>`,
 };
 
 export const sendMail = async (to: string, subject: string, text: string) => {
@@ -33,10 +35,7 @@ export const sendMail = async (to: string, subject: string, text: string) => {
       text,
     });
     console.log(`✅ Email sent to ${to}`);
-  } catch (error) {
-    console.error(`❌ Failed to send email to ${to}:`, error);
+  } catch (error: any) {
+    console.error(`❌ Failed to send email to ${to}:`, error.message || error);
   }
 };
-
-
-

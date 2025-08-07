@@ -17,6 +17,7 @@ import ticketRoutes from './routes/ticketRoutes';
 import resetRoutes from './routes/resetRoutes';
 import userRoutes from './routes/userRoutes';
 import uploadRoutes from './routes/uploadRoutes';
+import getUserTickets  from './routes/userTickets'; // ✅ Import user tickets route
 import notificationRoutes from './routes/notificationsRoutes';
 import { authMiddleware } from './middleware/authMiddleware';
 import './utils/mailer'; // ✅ Ensure mailer is initialized
@@ -75,7 +76,7 @@ app.use('/api/reset', resetRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use('/api', authMiddleware); // ✅ Apply auth middleware to all API routes
+app.use('/api/user-tickets', getUserTickets); // ✅ Add user tickets route
 
 // ✅ Logs
 console.log('\n✅ Loaded Routes:');
@@ -85,6 +86,7 @@ console.table([
   { Path: '/api/reset', Route: 'resetRoutes' },
   { Path: '/api/users', Route: 'userRoutes' },
   { Path: '/api/upload', Route: 'uploadRoutes' },
+  {Path: '/api/user-tickets', Route: 'getUserTickets' },
   { Path: '/api/notifications', Route: 'notificationRoutes' }
 ]);
 

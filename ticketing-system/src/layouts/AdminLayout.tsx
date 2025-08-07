@@ -196,9 +196,24 @@ useEffect(() => {
           </div>
 
           <div className="flex items-center gap-4 relative" ref={dropdownRef}>
-            <button onClick={() => setDarkMode(!darkMode)}>
-              {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
+          <div
+            className="w-14 h-7 flex items-center bg-gray-300 dark:bg-gray-700 rounded-full px-1 cursor-pointer transition-colors duration-300"
+            onClick={() => setDarkMode(!darkMode)}
+          >
+            <motion.div
+              className="w-5 h-5 bg-white rounded-full shadow-md flex items-center justify-center"
+              layout
+              transition={{ type: 'spring', stiffness: 700, damping: 30 }}
+              initial={false}
+              animate={{ x: darkMode ? 28 : 0 }}
+            >
+              {darkMode ? (
+                <Moon size={14} className="text-gray-800" />
+              ) : (
+                <Sun size={14} className="text-yellow-500" />
+              )}
+            </motion.div>
+          </div>
 
             <div className="relative">
               <button onClick={() => {
@@ -255,7 +270,9 @@ useEffect(() => {
                     transition={{ duration: 0.2 }}
                     className="absolute right-0 top-12 w-52 bg-white dark:bg-gray-800 rounded shadow-lg z-50"
                   >
-                    <div className="px-4 py-2 text-sm border-b">{user?.email}</div>
+                  <div className="px-4 py-2 text-sm border-b dark:border-gray-700">
+                    {user?.email}
+                  </div>
                     <button
                       onClick={() => setShowLogoutConfirm(true)}
                       className="w-full flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900"

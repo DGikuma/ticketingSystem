@@ -12,9 +12,21 @@ import {
   X,
   SendHorizontal,
   Loader,
-  Pencil, 
-  FileText
+  Pencil,
+  FileText,
 } from 'lucide-react';
+import {
+  PencilSquareIcon,
+  XMarkIcon,
+  DocumentTextIcon,
+  PaperClipIcon,
+  ChatBubbleBottomCenterTextIcon,
+  PaperAirplaneIcon,
+  ClipboardDocumentCheckIcon,
+} from '@heroicons/react/24/outline';
+import Lottie from 'lottie-react';
+import AndroidLottie from '../components/AndroidLottie.json';
+import { jwtDecode } from 'jwt-decode';
 
 interface TicketType {
   id: number;
@@ -33,6 +45,14 @@ interface CommentType {
   author: string;
 }
 
+interface DecodedUser {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  exp: number;
+}
+
 export default function TicketsPage() {
   const [tickets, setTickets] = useState<TicketType[]>([]);
   const [filteredTickets, setFilteredTickets] = useState<TicketType[]>([]);
@@ -48,63 +68,71 @@ export default function TicketsPage() {
   const [comments, setComments] = useState<CommentType[]>([]);
 
   useEffect(() => {
+    console.log('🔁 useEffect triggered');
+    const storedToken = localStorage.getItem('token');
+    console.log('🧪 Stored token:', storedToken);
+
+    if (!storedToken) {
+      console.error('⛔ No token in localStorage');
+      return;
+    }
+
+    const fetchTickets = async () => {
+      try {
+        const res = await fetch('/api/tickets', {
+          headers: {
+            Authorization: `Bearer ${storedToken}`,
+          },
+        });
+
+        console.log('🧪 Response OK?', res.ok);
+        console.log('🧪 Raw response: ', res);
+
+        if (!res.ok) {
+          const error = await res.json();
+          console.error('❌ Error response:', error);
+          return;
+        }
+
+        const data = await res.json();
+        console.log('✅ Full data object:', data);
+
+        const ticketsArray = Array.isArray(data) ? data : data.tickets || [];
+        console.log('✅ Tickets array to normalize:', ticketsArray);
+
+        const normalized = ticketsArray.map((t: any): TicketType => ({
+          id: t.id,
+          subject: t.subject,
+          status: t.status,
+          created_at: t.created_at,
+          description: t.description || '',
+          priority: t.priority || 'normal',
+          assigned_to: t.assigned_to || 'Unassigned',
+        }));
+
+        console.log("🧾 Normalized tickets", normalized);
+
+        setTickets(normalized);
+        setFilteredTickets(normalized);
+      } catch (err) {
+        console.error('❌ Fetch error:', err);
+      }
+    };
+
     fetchTickets();
   }, []);
 
-  const fetchTickets = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch('http://localhost:4000/api/tickets/user', {
-        credentials: 'include',
-      });
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.message || 'Failed to fetch tickets');
-
-      setTickets(data);
-      setFilteredTickets(data);
-    } catch (err: any) {
-      toast.error(err.message || 'Something went wrong');
-
-      const mock = [
-        {
-          id: 1,
-          subject: 'Unable to log in',
-          status: 'open',
-          created_at: '2025-07-15',
-          description: 'I tried logging in but got a 500 error.',
-          priority: 'High',
-          assigned_to: 'Agent Jane',
-        },
-        {
-          id: 2,
-          subject: 'Payment not processed',
-          status: 'pending',
-          created_at: '2025-07-14',
-          description: 'I paid but the system didn’t update.',
-          priority: 'Medium',
-          assigned_to: 'Agent John',
-        },
-        {
-          id: 3,
-          subject: 'Bug in mobile app',
-          status: 'closed',
-          created_at: '2025-07-13',
-          description: 'The submit button crashes the app.',
-          priority: 'Low',
-          assigned_to: 'Agent Mercy',
-        },
-      ];
-      setTickets(mock);
-      setFilteredTickets(mock);
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (search) {
+      handleSearch(search);
+    } else {
+      setFilteredTickets(tickets);
     }
-  };
+  }, [search, tickets]);
 
   const handleSearch = (value: string) => {
     setSearch(value);
-    const filtered = tickets.filter(ticket =>
+    const filtered = tickets.filter((ticket) =>
       ticket.subject.toLowerCase().includes(value.toLowerCase())
     );
     setFilteredTickets(filtered);
@@ -147,9 +175,9 @@ export default function TicketsPage() {
       id: Date.now(),
       content: commentInput,
       created_at: new Date().toISOString(),
-      author: 'You'
+      author: 'You',
     };
-    setComments(prev => [...prev, newComment]);
+    setComments((prev) => [...prev, newComment]);
     setCommentInput('');
     try {
       await new Promise((res) => setTimeout(res, 1000));
@@ -165,7 +193,7 @@ export default function TicketsPage() {
     setSelectedTicket(ticket);
     setEditSubject(ticket.subject);
     setEditDescription(ticket.description || '');
-    setComments([]);
+    setComments([]); // Optional: Load comments if implemented
   };
 
   return (
@@ -215,8 +243,13 @@ export default function TicketsPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={3} className="px-6 py-6 text-center text-gray-500 dark:text-gray-400">
-                    No tickets found.
+                  <td colSpan={3} className="px-6 py-10 text-center">
+                    <div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
+                      <div className="w-40 h-40">
+                        <Lottie animationData={AndroidLottie} loop />
+                      </div>
+                      <p className="mt-4 text-sm">No tickets found.</p>
+                    </div>
                   </td>
                 </tr>
               )}
@@ -253,8 +286,9 @@ export default function TicketsPage() {
           <Dialog.Panel
             className="w-full max-w-3xl max-h-[90vh] overflow-y-auto transform rounded-2xl bg-white dark:bg-zinc-900 text-gray-900 dark:text-gray-100 p-4 sm:p-6 shadow-2xl transition-all"
           >
+            {/* Header */}
             <div className="flex justify-between items-center border-b border-gray-200 dark:border-zinc-700 pb-4 mb-4">
-              <Dialog.Title className="text-lg sm:text-xl font-semibold">
+              <Dialog.Title className="text-lg sm:text-xl font-semibold flex-1">
                 {isEditing ? (
                   <input
                     value={editSubject}
@@ -265,18 +299,25 @@ export default function TicketsPage() {
                   selectedTicket?.subject
                 )}
               </Dialog.Title>
-              <div className="flex gap-2 items-center">
+              <div className="flex gap-2 items-center ml-4">
                 {!isEditing && (
-                  <button onClick={() => setIsEditing(true)} className="text-gray-500 dark:text-gray-400 hover:text-blue-500 transition">
-                    <Pencil className="w-5 h-5" />
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="text-gray-500 dark:text-gray-400 hover:text-blue-500 transition"
+                  >
+                    <PencilSquareIcon className="w-5 h-5" />
                   </button>
                 )}
-                <button onClick={() => setSelectedTicket(null)} className="text-gray-500 dark:text-gray-400 hover:text-red-500 transition">
-                  <X className="w-6 h-6" />
+                <button
+                  onClick={() => setSelectedTicket(null)}
+                  className="text-gray-500 dark:text-gray-400 hover:text-red-500 transition"
+                >
+                  <XMarkIcon className="w-6 h-6" />
                 </button>
               </div>
             </div>
 
+            {/* Ticket metadata */}
             <div className="space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-4">
                 <p>
@@ -296,16 +337,36 @@ export default function TicketsPage() {
                 </p>
               </div>
 
-              <div className="mt-4 p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-500 text-sm">
-                <h4 className="font-semibold text-indigo-700 dark:text-indigo-300 mb-2">🤖 AI Summary</h4>
-                <p>
-                  This ticket seems related to a recent issue affecting multiple users. Suggested actions: confirm priority,
-                  tag relevant team, and verify impact. Please ensure SLA alignment.
-                </p>
-              </div>
+              {/* Subject */}
+              {selectedTicket && (
+                <div className="mt-4 p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-500 text-sm">
+                  <h4 className="flex items-center font-semibold text-indigo-700 dark:text-indigo-300 mb-2">
+                    <ClipboardDocumentCheckIcon className="w-5 h-5 mr-2" />
+                    Ticket Subject
+                  </h4>
+                  <p className="text-gray-700 dark:text-gray-100">{selectedTicket.subject || 'No subject provided'}</p>
+                </div>
+              )}
 
+              {/* Description */}
+              {selectedTicket && (
+                <div className="mt-4 p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-500 text-sm">
+                  <h4 className="flex items-center font-semibold text-indigo-700 dark:text-indigo-300 mb-2">
+                    <DocumentTextIcon className="w-5 h-5 mr-2" />
+                    Ticket Description
+                  </h4>
+                  <p className="whitespace-pre-wrap text-gray-700 dark:text-gray-100">
+                    {selectedTicket.description || 'No description provided'}
+                  </p>
+                </div>
+              )}
+
+              {/* Attachments */}
               <div className="mt-4">
-                <h4 className="font-semibold mb-2">🖼️ Attachments</h4>
+                <h4 className="flex items-center font-semibold mb-2">
+                  <PaperClipIcon className="w-5 h-5 mr-2" />
+                  Attachments
+                </h4>
                 <div className="grid grid-cols-2 gap-4 overflow-y-auto max-h-40">
                   <div className="relative group rounded-lg overflow-hidden shadow border dark:border-zinc-700">
                     <img
@@ -323,57 +384,65 @@ export default function TicketsPage() {
                     </a>
                   </div>
                   <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg flex items-center gap-3">
-                    <FileText className="text-gray-500 dark:text-gray-300 w-5 h-5" />
+                    <DocumentTextIcon className="text-gray-500 dark:text-gray-300 w-5 h-5" />
                     <span className="truncate text-sm">report-summary.pdf</span>
                   </div>
                 </div>
               </div>
-                        {isEditing && (
-                            <div>
-                            <button
-                                onClick={handleSave}
-                                disabled={editLoading}
-                                className="mt-2 inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-full text-sm shadow-lg transition"
-                            >
-                                {editLoading ? <Loader className="animate-spin w-4 h-4" /> : '💾 Save Changes'}
-                            </button>
-                            </div>
-                        )}
-                        </div>
 
-                        {/* Comments */}
-                        <div className="mt-6 pt-6 border-t border-gray-200">
-                        <h4 className="text-sm font-semibold mb-2">💬 Comments</h4>
-                        <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                            {comments.length === 0 && <p className="text-gray-400">No comments yet.</p>}
-                            {comments.map((c) => (
-                            <div key={c.id} className="text-sm p-3 bg-gray-100 rounded-lg shadow">
-                                <p className="text-xs text-gray-500 mb-1">{c.author} — {new Date(c.created_at).toLocaleString()}</p>
-                                <p>{c.content}</p>
-                            </div>
-                            ))}
-                        </div>
-
-                        <div className="mt-4 flex items-center gap-2">
-                            <input
-                            value={commentInput}
-                            onChange={(e) => setCommentInput(e.target.value)}
-                            placeholder="Write a comment..."
-                            className="flex-1 px-4 py-2 rounded-full border border-gray-300 bg-white text-sm focus:ring-2 focus:ring-blue-400 shadow-inner"
-                            />
-                            <button
-                            onClick={handlePostComment}
-                            disabled={commentLoading}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-full shadow transition"
-                            >
-                            {commentLoading ? (
-                                <Loader className="w-4 h-4 animate-spin" />
-                            ) : (
-                                <SendHorizontal className="w-4 h-4" />
-                            )}
-                            </button>
-                        </div>
+              {/* Save Button */}
+              {isEditing && (
+                <div>
+                  <button
+                    onClick={handleSave}
+                    disabled={editLoading}
+                    className="mt-4 inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-full text-sm shadow-lg transition"
+                  >
+                    {editLoading ? <Loader className="animate-spin w-4 h-4" /> : '💾 Save Changes'}
+                  </button>
+                </div>
+              )}
             </div>
+
+            {/* Comments Section */}
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <h4 className="flex items-center text-sm font-semibold mb-2">
+                <ChatBubbleBottomCenterTextIcon className="w-5 h-5 mr-2" />
+                Comments
+              </h4>
+              <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                {comments.length === 0 && <p className="text-gray-400">No comments yet.</p>}
+                {comments.map((c) => (
+                  <div key={c.id} className="text-sm p-3 bg-gray-100 rounded-lg shadow">
+                    <p className="text-xs text-gray-500 mb-1">
+                      {c.author} — {new Date(c.created_at).toLocaleString()}
+                    </p>
+                    <p>{c.content}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 flex items-center gap-2">
+                <input
+                  value={commentInput}
+                  onChange={(e) => setCommentInput(e.target.value)}
+                  placeholder="Write a comment..."
+                  className="flex-1 px-4 py-2 rounded-full border border-gray-300 bg-white text-sm focus:ring-2 focus:ring-blue-400 shadow-inner"
+                />
+                <button
+                  onClick={handlePostComment}
+                  disabled={commentLoading}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-full shadow transition"
+                >
+                  {commentLoading ? (
+                    <Loader className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <PaperAirplaneIcon className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
           </Dialog.Panel>
         </Transition.Child>
       </div>

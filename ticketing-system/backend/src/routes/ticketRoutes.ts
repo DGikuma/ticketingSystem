@@ -13,10 +13,16 @@ const upload = multer({ dest: 'uploads/' });
 const commentUpload = multer({ dest: 'uploads/comments/' });
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: process.env.EMAIL_HOST,
+  port: Number(process.env.EMAIL_PORT),
+  secure: true,
+  pool: true,
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    pass: process.env.EMAIL_PASSWORD,
+  },
+  tls: {
+    rejectUnauthorized: false, // ✅ for testing or self-signed certs
   },
 });
 

@@ -11,7 +11,7 @@ interface DecodedUser {
   id: number;
   name: string;
   email: string;
-  role: 'admin' | 'support-agent' | 'user';
+  role: 'admin' | 'agent' | 'user';
   exp: number;
 }
 
