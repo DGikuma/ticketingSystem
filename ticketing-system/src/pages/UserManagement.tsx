@@ -192,11 +192,15 @@ const UserManagement = () => {
                     <td className="p-3 font-semibold">{user.name}</td>
                     <td className="p-3">{user.email}</td>
                     <td className="p-3">
-                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium text-white shadow ${
-                        user.role === 'admin'
-                          ? 'bg-gradient-to-r from-blue-500 to-indigo-500'
-                          : 'bg-gradient-to-r from-green-400 to-emerald-500'
-                      }`}>
+                      <span
+                        className={`inline-block px-2 py-1 rounded-full text-xs font-medium text-white shadow
+                          ${user.role === 'admin'
+                            ? 'bg-gradient-to-r from-blue-500 to-indigo-500'
+                            : user.role === 'agent'
+                            ? 'bg-gradient-to-r from-purple-500 to-pink-500'
+                            : 'bg-gradient-to-r from-green-400 to-emerald-500'
+                          }`}
+                      >
                         {user.role}
                       </span>
                     </td>

@@ -35,6 +35,27 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, mode, userData }
   });
 
   const isView = mode === 'view';
+  const [department, setDepartment] = useState("");
+
+    const departments = [
+    { key: "none", label: "None" },
+    { key: "management", label: "Management" },
+    { key: "claims", label: "Claims" },
+    { key: "underwriting", label: "Underwriting" },
+    { key: "ict", label: "ICT" },
+    { key: "finance_admin", label: "Finance & Administration" },
+    { key: "operations", label: "Operations" },
+    { key: "hr", label: "HR" },
+    { key: "marketing", label: "Marketing" },
+    { key: "business_development", label: "Business Development" },
+    { key: "legal", label: "Legal" },
+    { key: "sales", label: "Sales" },
+    { key: "customer_service", label: "Customer Service" },
+    { key: "procurement", label: "Procurement" },
+    { key: "product_management", label: "Product Management" },
+    { key: "project_management", label: "Project Management" },
+    { key: "data_analysis", label: "Data Analysis" },
+  ];
 
   // Reset form data when modal opens/closes or mode/userData changes
   useEffect(() => {
@@ -141,15 +162,40 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, mode, userData }
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="role">Role</Label>
-                      <Input
-                        name="role"
-                        value={formData.role}
-                        onChange={handleChange}
-                      />
-                    </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="role">Role</Label>
+                        <select
+                          id="role"
+                          name="role"
+                          value={formData.role}
+                          onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
+                          required
+                          className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500"
+                        >
+                          <option value="user">User</option>
+                          <option value="agent">Agent</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                      </div>
 
+                    <div className="space-y-2">
+                      <Label htmlFor="department">Department</Label>
+                      <select
+                        id="department"
+                        name="department"
+                        value={department}
+                        onChange={(e) => setDepartment(e.target.value)}
+           x             required
+                        className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500"
+                      >
+                        <option value="" disabled>Select your department</option>
+                        {departments.map((dept) => (
+                          <option key={dept.key} value={dept.key}>
+                            {dept.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                     <div className="space-y-2">
                       <Label htmlFor="file">Upload Avatar</Label>
                       <Input type="file" name="file" onChange={handleChange} />
