@@ -23,6 +23,8 @@ export default function RequestReset() {
     e.preventDefault();
     setLoading(true);
 
+    console.log('🔵 [FRONTEND] Submitting reset request for:', email);
+
     try {
       const res = await fetch('/api/reset/requestReset', {
         method: 'POST',
@@ -30,15 +32,24 @@ export default function RequestReset() {
         body: JSON.stringify({ email }),
       });
 
-      const data = await res.json();
+      console.log('🟡 [FRONTEND] Response status:', res.status);
+
+      let data: any = {};
+      try {
+        data = await res.json();
+        console.log('🟡 [FRONTEND] Response JSON:', data);
+      } catch (jsonErr) {
+        console.warn('⚠️ [FRONTEND] Failed to parse JSON response:', jsonErr);
+      }
 
       if (res.ok) {
         toast.success('✅ Reset link sent to your email.');
         setEmail('');
       } else {
-        toast.error(data.message || '❌ Failed to send reset link.');
+        toast.error(data?.message || '❌ Failed to send reset link.');
       }
-    } catch {
+    } catch (err: any) {
+      console.error('❌ [FRONTEND] Network or fetch error:', err);
       toast.error('❌ Network error. Please try again.');
     } finally {
       setLoading(false);

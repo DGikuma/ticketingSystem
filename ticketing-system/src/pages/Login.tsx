@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { SunIcon, MoonIcon } from '@heroicons/react/24/solid';
+import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { Maximize2, Minimize2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import AnimatedBackground from '@/components/AnimatedBackground';
 
+import AnimatedBackground from '@/components/AnimatedBackground';
 import TicketFlyawayLoader from '../components/TicketFlyawayLoader';
 
 interface DecodedUser {
@@ -19,7 +21,10 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showLoader, setShowLoader] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
   const [isDark, setIsDark] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   const nav = useNavigate();
 
   // Theme load
@@ -31,15 +36,13 @@ export default function Login() {
     document.documentElement.classList.toggle('dark', useDark);
   }, []);
 
-  // Initial loader on visit
+  // Loader on visit
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      setShowLoader(false);
-    }, 3500);
+    const timeout = setTimeout(() => setShowLoader(false), 3500);
     return () => clearTimeout(timeout);
   }, []);
 
-  // Auto-login if valid token
+  // Auto-login if token valid
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -70,7 +73,6 @@ export default function Login() {
       toast.error('Email is required');
       return;
     }
-
     if (!password.trim()) {
       toast.error('Password is required');
       return;
@@ -78,7 +80,7 @@ export default function Login() {
 
     setShowLoader(true);
     try {
-      const res = await fetch('\/api/auth/login', {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -95,7 +97,7 @@ export default function Login() {
         toast.error(data.error || 'Invalid credentials');
         setShowLoader(false);
       }
-    } catch (err) {
+    } catch {
       toast.error('Network error. Please try again later.');
       setShowLoader(false);
     }
@@ -108,6 +110,16 @@ export default function Login() {
     localStorage.setItem('theme', newDark ? 'dark' : 'light');
   };
 
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
+
   if (showLoader) {
     return (
       <div className="fixed inset-0 z-50 bg-white dark:bg-black flex items-center justify-center">
@@ -117,10 +129,13 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center px-4 sm:px-6 lg:px-8 relative">
+   <div className="min-h-[80vh] bg-gray-50 dark:bg-gray-950 flex items-center justify-center px-4 sm:px-6 lg:px-8 relative py-12">
+      {/* Animated Background */}
       <AnimatedBackground theme={isDark ? 'dark' : 'light'} />
-      {/* Theme Toggle Switch */}
-      <div className="absolute top-4 right-4">
+
+      {/* Top-right controls */}
+      <div className="absolute top-4 right-4 flex gap-3">
+        {/* Theme toggle */}
         <label className="relative inline-flex items-center cursor-pointer">
           <input
             type="checkbox"
@@ -128,11 +143,7 @@ export default function Login() {
             onChange={toggleDarkMode}
             className="sr-only peer"
           />
-
-          {/* Track */}
           <div className="w-14 h-8 bg-gray-300 dark:bg-gray-700 rounded-full peer-checked:bg-blue-600 transition-colors duration-300" />
-
-          {/* Sliding Thumb with Icon */}
           <span
             className="absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center 
                       transition-transform duration-300 transform peer-checked:translate-x-6"
@@ -144,9 +155,41 @@ export default function Login() {
             )}
           </span>
         </label>
+
+        {/* Fullscreen toggle */}
+        <button
+          onClick={toggleFullscreen}
+          className="relative group p-1 rounded-xl 
+                    bg-white/20 dark:bg-black/20 backdrop-blur-md 
+                    border border-black/30 dark:border-gray-700 
+                    shadow-lg hover:shadow-2xl transition-all duration-300 ease-out 
+                    hover:scale-110 active:scale-95 overflow-hidden"
+          title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+        >
+          {/* Glow ring - always visible, theme adaptive */}
+          <span
+            className={`absolute inset-0 rounded-xl blur-xl transition-all duration-500 
+              ${isDark 
+                ? 'bg-gradient-to-r from-purple-500 via-pink-500 to-red-500' 
+                : 'bg-gradient-to-r from-blue-700 via-teal-600 to-emerald-700'
+              } 
+              opacity-30 group-hover:opacity-60`}
+          ></span>
+
+          {/* Icon */}
+          <span className="relative z-10 flex items-center justify-center">
+            {isFullscreen ? (
+              <Minimize2 className="w-5 h-5 text-red-600 drop-shadow-md transition-transform duration-500 group-hover:rotate-180" />
+            ) : (
+              <Maximize2 className="w-5 h-5 text-green-600 drop-shadow-md transition-transform duration-500 group-hover:rotate-180" />
+            )}
+          </span>
+        </button>
+
       </div>
+
       {/* Login Card */}
-      <div className="max-w-xl w-full space-y-10 bg-white dark:bg-gray-900 shadow-2xl rounded-2xl p-12 border dark:border-gray-800 relative z-10">
+      <div className="max-w-xl w-full space-y-6 bg-white dark:bg-gray-900 shadow-2xl rounded-2xl p-8 border dark:border-gray-800 relative z-10">
         {/* Header */}
         <div>
           <h2 className="text-center text-3xl font-extrabold text-gray-900 dark:text-white">
@@ -162,6 +205,7 @@ export default function Login() {
 
         <form onSubmit={handleLogin} className="mt-8 space-y-6">
           <div className="space-y-4">
+            {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Email Address <span className="text-red-500">*</span>
@@ -173,42 +217,71 @@ export default function Login() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 px-5 py-3 w-full border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                className="mt-1 px-3 py-2 w-full border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm 
+                          focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 
+                          focus:border-blue-500 dark:bg-gray-800 dark:text-white"
               />
             </div>
 
+            {/* Password */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Password <span className="text-red-500">*</span>
               </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 px-5 py-3 w-full border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
-              />
+              <div className="relative mt-1">
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="px-3 py-2 w-full border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm 
+                            focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 
+                            focus:border-blue-500 dark:bg-gray-800 dark:text-white pr-12"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700 
+                            dark:hover:text-gray-300 transition-transform duration-300 ease-in-out"
+                  style={{
+                    transform: showPassword ? 'rotate(180deg)' : 'rotate(0deg)',
+                  }}
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <EyeSlashIcon className="w-5 h-5" />
+                  ) : (
+                    <EyeIcon className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
 
+          {/* Submit */}
           <div>
             <button
               type="submit"
-              className="group relative w-full flex justify-center py-3 px-5 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="group relative w-full flex justify-center py-2 px-3 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               Sign in
             </button>
             <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
               Forgot your password?{' '}
               <a href="/request-reset" className="font-medium text-blue-600 hover:underline">
-               Reset Here
+                Reset Here
               </a>
             </p>
           </div>
         </form>
+                  {/* Footer */}
+    <footer className="mt-8 p-4 text-center text-sm text-gray-500 dark:text-gray-400">
+      &copy; {new Date().getFullYear()} Ticketing System. All rights reserved.
+    </footer>
       </div>
     </div>
+
   );
 }

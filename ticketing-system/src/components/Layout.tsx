@@ -1,4 +1,5 @@
 import React from 'react';
+import AnimatedBackground from '../components/AnimatedBackground';
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -6,12 +7,12 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       <header className="p-4 shadow bg-white dark:bg-gray-900 dark:border-b dark:border-gray-700">
         <h1 className="text-2xl font-semibold">Ticketing System</h1>
       </header>
+           {/* Animated Background */}
+      <AnimatedBackground />
 
+      {/* Main content area */}
       <main className="container mx-auto p-6">{children}</main>
 
-      <footer className="mt-8 p-4 text-center text-sm text-gray-500 dark:text-gray-400">
-        &copy; {new Date().getFullYear()} Ticketing System. All rights reserved.
-      </footer>
     </div>
   );
 };

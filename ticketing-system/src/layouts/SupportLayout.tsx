@@ -1,7 +1,18 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, Ticket, Bell, LogOut, Moon, Sun, UserCircle, Menu
+  LayoutDashboard,
+  Ticket,
+  Bell,
+  LogOut,
+  Moon,
+  Sun,
+  UserCircle,
+  Menu,
+  ChevronLeft,
+  ChevronRight,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { io } from 'socket.io-client';
@@ -14,8 +25,11 @@ export default function SupportLayout() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false); // ✅ NEW
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false); // Desktop collapse
+  const [mobileCollapsed, setMobileCollapsed] = useState(true); // Mobile mini sidebar by default
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false); // Mobile open/close
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const nav = useNavigate();
   const token = localStorage.getItem('token');
@@ -40,7 +54,7 @@ export default function SupportLayout() {
 
       socket.on('notification', (data) => {
         setUnreadCount((prev) => prev + 1);
-        toast.custom((t) => (
+        toast.custom(() => (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -81,50 +95,187 @@ export default function SupportLayout() {
     nav('/');
   };
 
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-white">
-
-      {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-800 shadow-md transform transition-transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+      {/* DESKTOP SIDEBAR */}
+      <aside
+        onMouseEnter={() => sidebarCollapsed && setSidebarCollapsed(false)}
+        onMouseLeave={() => !sidebarCollapsed && setSidebarCollapsed(true)}
+        className={`hidden md:flex fixed inset-y-0 left-0 z-40 transition-all bg-white dark:bg-gray-800 shadow-md
+        ${sidebarCollapsed ? 'w-20' : 'w-64'}`}
+      >
         <div className="p-4 space-y-6">
-          <h2 className="text-2xl font-bold">Support Panel</h2>
+          {!sidebarCollapsed && <h2 className="text-2xl font-bold">Support Panel</h2>}
           <nav className="space-y-2">
-            <SidebarLink icon={<LayoutDashboard />} label="Dashboard" href="/support" colorClass="text-blue-600"/>
-            <SidebarLink icon={<Ticket />} label="Assigned Tickets" href="/support/tickets" colorClass="text-green-500"/>
-            <SidebarLink icon={<Bell />} label="Notifications" href="/support/notifications" badge={unreadCount}  colorClass="text-red-500"/>
+            <SidebarLink
+              icon={<LayoutDashboard />}
+              label="Dashboard"
+              href="/support"
+              colorClass="text-blue-600"
+              collapsed={sidebarCollapsed}
+            />
+            <SidebarLink
+              icon={<Ticket />}
+              label="Assigned Tickets"
+              href="/support/tickets"
+              colorClass="text-green-500"
+              collapsed={sidebarCollapsed}
+            />
+            <SidebarLink
+              icon={<Bell />}
+              label="Notifications"
+              href="/support/notifications"
+              badge={unreadCount}
+              colorClass="text-red-500"
+              collapsed={sidebarCollapsed}
+            />
           </nav>
+
+          {/* Desktop collapse button with hover label */}
+          <motion.div
+            className="relative mt-6 flex items-center justify-center"
+          >
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 text-white shadow-lg hover:shadow-xl transition-all"
+            >
+              {sidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+            </motion.button>
+
+            <AnimatePresence>
+              {sidebarCollapsed && (
+                <motion.div
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  className="absolute left-12 top-0 h-10 flex items-center bg-white dark:bg-gray-800 text-gray-800 dark:text-white px-3 rounded-lg shadow-lg whitespace-nowrap"
+                >
+                  Expand Sidebar
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 md:ml-64 p-6 relative w-full">
+      {/* MOBILE SIDEBAR */}
+      <AnimatePresence>
+        {mobileSidebarOpen && (
+          <motion.aside
+            initial={{ x: -250 }}
+            animate={{ x: 0 }}
+            exit={{ x: -250 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-y-0 left-0 bg-white dark:bg-gray-800 shadow-lg z-50 p-4 md:hidden"
+            style={{ width: mobileCollapsed ? 80 : 250 }}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setMobileSidebarOpen(false)}
+                className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-red-500 to-pink-500 text-white shadow-lg hover:shadow-xl transition-all"
+                title="Close Sidebar"
+              >
+                Close
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setMobileCollapsed(!mobileCollapsed)}
+                className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 text-white shadow-lg hover:shadow-xl transition-all"
+                title={mobileCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+              >
+                {mobileCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+              </motion.button>
+            </div>
+
+            <nav className="space-y-2">
+              <SidebarLink
+                icon={<LayoutDashboard />}
+                label="Dashboard"
+                href="/support"
+                colorClass="text-blue-600"
+                collapsed={mobileCollapsed}
+              />
+              <SidebarLink
+                icon={<Ticket />}
+                label="Assigned Tickets"
+                href="/support/tickets"
+                colorClass="text-green-500"
+                collapsed={mobileCollapsed}
+              />
+              <SidebarLink
+                icon={<Bell />}
+                label="Notifications"
+                href="/support/notifications"
+                badge={unreadCount}
+                colorClass="text-red-500"
+                collapsed={mobileCollapsed}
+              />
+            </nav>
+          </motion.aside>
+        )}
+      </AnimatePresence>
+
+      {/* MAIN CONTENT */}
+      <main className={`flex-1 transition-all ${sidebarCollapsed ? 'md:ml-20' : 'md:ml-64'} p-6 relative w-full`}>
         {/* Top bar */}
         <div className="flex justify-between items-center mb-6">
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden">
-            <Menu />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Mobile menu toggle */}
+            <button
+              className="md:hidden p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              onClick={() => setMobileSidebarOpen(true)}
+            >
+              <Menu size={24} />
+            </button>
+          </div>
 
           <h1 className="text-xl font-bold">Support Dashboard</h1>
 
           <div className="flex items-center gap-4 relative">
-          <div
-            className="w-14 h-7 flex items-center bg-gray-300 dark:bg-gray-700 rounded-full px-1 cursor-pointer transition-colors duration-300"
-            onClick={() => setDarkMode(!darkMode)}
-          >
-            <motion.div
-              className="w-5 h-5 bg-white rounded-full shadow-md flex items-center justify-center"
-              layout
-              transition={{ type: 'spring', stiffness: 700, damping: 30 }}
-              initial={false}
-              animate={{ x: darkMode ? 28 : 0 }}
+            {/* Dark mode toggle */}
+            <div
+              className="w-14 h-7 flex items-center bg-gray-300 dark:bg-gray-700 rounded-full px-1 cursor-pointer transition-colors duration-300"
+              onClick={() => setDarkMode(!darkMode)}
             >
-              {darkMode ? (
-                <Moon size={14} className="text-gray-800" />
-              ) : (
-                <Sun size={14} className="text-yellow-500" />
-              )}
-            </motion.div>
-          </div>
+              <motion.div
+                className="w-5 h-5 bg-white rounded-full shadow-md flex items-center justify-center"
+                layout
+                transition={{ type: 'spring', stiffness: 700, damping: 30 }}
+                initial={false}
+                animate={{ x: darkMode ? 28 : 0 }}
+              >
+                {darkMode ? <Moon size={14} className="text-gray-800" /> : <Sun size={14} className="text-yellow-500" />}
+              </motion.div>
+            </div>
+
+            {/* Fullscreen toggle button */}
+            <motion.button
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={toggleFullscreen}
+              className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-green-500 to-teal-500 text-white shadow-lg hover:shadow-xl transition-all"
+              title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+            >
+              {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+            </motion.button>
+
+            {/* User dropdown */}
             <button onClick={() => setShowDropdown(prev => !prev)}>
               <UserCircle size={28} />
             </button>
@@ -137,11 +288,9 @@ export default function SupportLayout() {
                   exit={{ opacity: 0, y: -6 }}
                   className="absolute right-0 top-12 w-52 bg-white dark:bg-gray-800 rounded shadow-lg z-50"
                 >
-                  <div className="px-4 py-2 text-sm border-b dark:border-gray-700">
-                    {user?.email}
-                  </div>
+                  <div className="px-4 py-2 text-sm border-b dark:border-gray-700">{user?.email}</div>
                   <button
-                    onClick={() => setShowLogoutConfirm(true)} // ✅ trigger confirm
+                    onClick={() => setShowLogoutConfirm(true)}
                     className="w-full flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900"
                   >
                     <LogOut size={16} /> Logout
@@ -154,7 +303,7 @@ export default function SupportLayout() {
 
         <Outlet />
 
-        {/* ✅ Logout Confirmation Modal */}
+        {/* Logout Confirmation Modal */}
         <AnimatePresence>
           {showLogoutConfirm && (
             <motion.div
@@ -199,20 +348,24 @@ function SidebarLink({
   label,
   href,
   active,
-  colorClass
+  badge,
+  colorClass,
+  collapsed
 }: {
   icon: React.ReactNode;
   label: string;
   href: string;
   active?: boolean;
+  badge?: number;
   colorClass?: string;
+  collapsed?: boolean;
 }) {
   return (
     <motion.a
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       href={href}
-      className={`flex items-center justify-between px-4 py-2 rounded transition-all ${
+      className={`flex items-center px-4 py-2 rounded transition-all relative ${
         active
           ? 'bg-blue-200 dark:bg-blue-900 font-semibold'
           : 'hover:bg-blue-100 dark:hover:bg-blue-900'
@@ -220,12 +373,16 @@ function SidebarLink({
       data-tooltip-id={label}
       data-tooltip-content={label}
     >
-      <div className="flex items-center gap-2">
+      <div className={`flex items-center gap-2 ${collapsed ? 'justify-center w-full' : ''}`}>
         <div className={colorClass}>{icon}</div>
-        <span>{label}</span>
+        {!collapsed && <span>{label}</span>}
       </div>
-      <Tooltip id={label} place="right" />
+      {badge && badge > 0 && (
+        <span className="absolute right-3 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
+          {badge}
+        </span>
+      )}
+      {collapsed && <Tooltip id={label} place="right" />}
     </motion.a>
   );
 }
-

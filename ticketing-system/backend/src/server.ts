@@ -19,7 +19,12 @@ import userRoutes from './routes/userRoutes';
 import uploadRoutes from './routes/uploadRoutes';
 import getUserTickets  from './routes/userTickets'; // ✅ Import user tickets route
 import notificationRoutes from './routes/notificationsRoutes';
+import agentsRoutes from './routes/agentsRoutes'; // ✅ Import agents route
+import ticketsRoutes from './routes/ticketsRoutes'; // ✅ Import tickets route
 import { authMiddleware } from './middleware/authMiddleware';
+import adminUsers from './routes/adminUsers'; // ✅ Import admin users route
+
+
 import './utils/mailer'; // ✅ Ensure mailer is initialized
 
 
@@ -76,8 +81,12 @@ app.use('/api/reset', resetRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use('/api/user-tickets', getUserTickets); // ✅ Add user tickets route
+app.use('/api/user-tickets', getUserTickets);
+app.use('/api/agents', agentsRoutes);
+app.use('/api/ticket', ticketsRoutes); 
+app.use('/api/admin/users', authMiddleware, adminUsers); // ✅ Admin users route with auth middleware
 
+app
 // ✅ Logs
 console.log('\n✅ Loaded Routes:');
 console.table([
@@ -86,8 +95,11 @@ console.table([
   { Path: '/api/reset', Route: 'resetRoutes' },
   { Path: '/api/users', Route: 'userRoutes' },
   { Path: '/api/upload', Route: 'uploadRoutes' },
-  {Path: '/api/user-tickets', Route: 'getUserTickets' },
-  { Path: '/api/notifications', Route: 'notificationRoutes' }
+  { Path: '/api/user-tickets', Route: 'getUserTickets' },
+  { Path: '/api/notifications', Route: 'notificationRoutes' },
+  { Path: '/api/agents', Route: 'agentsRoutes' },
+  { Path: '/api/ticket', Route: 'ticketsRoutes' }, 
+  { Path: '/api/users', Route: 'usersRoutes' },
 ]);
 
 // Root Route
