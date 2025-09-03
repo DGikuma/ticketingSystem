@@ -107,8 +107,8 @@ function App() {
             : 'bg-gray-800 text-white'
         }`
       }
-      bodyClassName="relative z-10" // ⬅️ ensures text sits above the animated fill
-      progressClassName="animate-toast-fill" // ⬅️ custom animated background fill
+      bodyClassName="relative z-10" 
+      progressClassName="animate-toast-fill" 
     />
 
     </>

@@ -12,8 +12,8 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'react-toastify';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 
-// === props updated to accept callbacks ===
 interface UserModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -45,9 +45,12 @@ const UserModal: React.FC<UserModalProps> = ({
     avatar: '',
     department: '',
     file: null as File | null,
+    password: '', // ✅ added
   });
 
   const isView = mode === 'view';
+
+  const [showPassword, setShowPassword] = useState(false);
 
   const departments = [
     { key: 'none', label: 'None' },
@@ -69,7 +72,6 @@ const UserModal: React.FC<UserModalProps> = ({
     { key: 'data_analysis', label: 'Data Analysis' },
   ];
 
-  // Reset form data when modal opens
   useEffect(() => {
     if (isOpen) {
       if (mode === 'add') {
@@ -80,6 +82,7 @@ const UserModal: React.FC<UserModalProps> = ({
           avatar: '',
           department: '',
           file: null,
+          password: '', // reset
         });
       } else if (userData) {
         setFormData({
@@ -89,6 +92,7 @@ const UserModal: React.FC<UserModalProps> = ({
           avatar: userData.avatar || '',
           department: userData.department || '',
           file: null,
+          password: '', // empty by default for edit
         });
       }
     }
@@ -108,45 +112,68 @@ const UserModal: React.FC<UserModalProps> = ({
     }
   };
 
-  // === save handler ===
   const handleSave = async () => {
     try {
       const form = new FormData();
-      form.append('name', formData.name);
-      form.append('email', formData.email);
-      form.append('role', formData.role);
-      form.append('department', formData.department);
-      if (formData.file) form.append('avatar', formData.file);
+      form.append("name", formData.name);
+      form.append("email", formData.email);
+      form.append("role", formData.role);
+      form.append("department", formData.department);
+      if (formData.file) form.append("avatar", formData.file);
 
-      let response;
-      if (mode === 'add') {
-        // POST new user
-        response = await fetch('/api/users', {
-          method: 'POST',
+      // only send password if creating OR user explicitly changed it
+      if (formData.password?.trim()) {
+        form.append("password", formData.password);
+      }
+
+      console.log("📤 Sending request with data:", {
+        ...formData,
+        hasFile: !!formData.file,
+        hasPassword: !!formData.password,
+        mode,
+      });
+
+      let response: Response | undefined;
+      if (mode === "add") {
+        console.log("➡️ POST /api/admin/users");
+        response = await fetch("/api/admin/users", {
+          method: "POST",
           body: form,
         });
-      } else if (mode === 'edit' && userData?.id) {
-        // PUT update user
+      } else if (mode === "edit" && userData?.id) {
+        console.log(`➡️ PUT /api/admin/users/${userData.id}`);
         response = await fetch(`/api/admin/users/${userData.id}`, {
-          method: 'PUT',
+          method: "PUT",
           body: form,
         });
       }
 
-      if (!response || !response.ok) throw new Error('Request failed');
-      const result = await response.json();
+      console.log("⬅️ Response status:", response?.status);
 
-      if (mode === 'add') {
-        toast.success('🎉 User added successfully!');
+      if (!response) throw new Error("No response returned");
+
+      if (!response.ok) {
+        // read backend error details
+        const errText = await response.text();
+        console.error("❌ Backend error:", errText);
+        throw new Error(`Request failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log("✅ Response JSON:", result);
+
+      if (mode === "add") {
+        toast.success("🎉 User added successfully!");
         onUserAdded?.(result);
       } else {
-        toast.success('✅ Changes saved!');
+        toast.success("✅ Changes saved!");
         onUserUpdated?.(result);
       }
+
       onClose();
     } catch (err) {
-      console.error(err);
-      toast.error('❌ Failed to save user');
+      console.error("❌ handleSave error:", err);
+      toast.error(`❌ Failed to save user: ${err instanceof Error ? err.message : err}`);
     }
   };
 
@@ -245,6 +272,34 @@ const UserModal: React.FC<UserModalProps> = ({
                           </option>
                         ))}
                       </select>
+                    </div>
+
+                    {/* ✅ New Password Field */}
+                    <div className="space-y-2">
+                      <Label htmlFor="password">Password</Label>
+                      <div className="relative w-full">
+                        <input
+                          id="password"
+                          type={showPassword ? "text" : "password"}
+                          value={formData.password}
+                          onChange={(e) =>
+                            setFormData({ ...formData, password: e.target.value })
+                          }
+                          placeholder="Enter password"
+                          className="w-full rounded-xl border px-3 py-2 pr-10 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute inset-y-0 right-2 flex items-center text-gray-500 hover:text-gray-700"
+                        >
+                          {showPassword ? (
+                            <EyeSlashIcon className="h-5 w-5" />
+                          ) : (
+                            <EyeIcon className="h-5 w-5" />
+                          )}
+                        </button>
+                      </div>
                     </div>
 
                     <div className="space-y-2">
