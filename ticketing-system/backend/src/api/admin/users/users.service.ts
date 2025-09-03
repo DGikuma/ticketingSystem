@@ -1,111 +1,96 @@
+
 import { db } from "../../../db";
 import bcrypt from "bcryptjs";
 
-export interface UserData {
-  id?: number;
+export interface User {
+  id: number;
   name: string;
   email: string;
-  username: string;
   password?: string;
   role: string;
-  avatar?: string | null;
+  created_at: Date;
 }
 
-// ✅ Hash password
-async function hashPassword(password: string): Promise<string> {
-  const salt = await bcrypt.genSalt(10);
-  return bcrypt.hash(password, salt);
-}
+export const createUser = async (user: Omit<User, "id" | "created_at">): Promise<User> => {
+  const hashedPassword = await bcrypt.hash(user.password!, 10);
 
-export const UsersService = {
-  // Create new user
-  async createUser(data: UserData) {
-    // Enforce unique email/username
-    const existing = await db.query(
-      "SELECT * FROM users WHERE email=$1 OR username=$2",
-      [data.email, data.username]
-    );
-    if (existing.rows.length > 0) {
-      throw new Error("Email or username already exists");
-    }
+  const existing = await db.query<{ id: number }>(
+    "SELECT id FROM users WHERE email = $1",
+    [user.email]
+  );
 
-    const hashedPassword = data.password
-      ? await hashPassword(data.password)
-      : null;
+  if (existing.rows.length > 0) {
+    throw new Error("User with this email already exists");
+  }
 
-    const result = await db.query(
-      `INSERT INTO users (name, email, username, password, role, avatar)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, name, email, username, role, avatar`,
-      [data.name, data.email, data.username, hashedPassword, data.role, data.avatar || null]
-    );
+  const result = await db.query<User>(
+    "INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING *",
+    [user.name, user.email, hashedPassword, user.role]
+  );
 
-    return result.rows[0];
-  },
+  return result.rows[0];
+};
 
-  // Get all users
-  async getAllUsers() {
-    const result = await db.query(
-      "SELECT id, name, email, username, role, avatar FROM users ORDER BY id DESC"
-    );
-    return result.rows;
-  },
+export const getUserById = async (id: number): Promise<User | null> => {
+  const result = await db.query<User>(
+    "SELECT id, name, email, role, created_at FROM users WHERE id = $1",
+    [id]
+  );
 
-  // Get one user
-  async getUserById(id: number) {
-    const result = await db.query(
-      "SELECT id, name, email, username, role, avatar FROM users WHERE id=$1",
-      [id]
-    );
-    return result.rows[0];
-  },
+  return result.rows[0] || null;
+};
 
-  // Update user
-  async updateUser(id: number, data: Partial<UserData>) {
-    const user = await this.getUserById(id);
-    if (!user) throw new Error("User not found");
+export const getAllUsers = async (): Promise<User[]> => {
+  const result = await db.query<User>(
+    "SELECT id, name, email, role, created_at FROM users ORDER BY created_at DESC"
+  );
 
-    // Prevent duplicates
-    if (data.email || data.username) {
-      const existing = await db.query(
-        "SELECT * FROM users WHERE (email=$1 OR username=$2) AND id<>$3",
-        [data.email ?? user.email, data.username ?? user.username, id]
-      );
-      if (existing.rows.length > 0) {
-        throw new Error("Email or username already taken");
-      }
-    }
+  return result.rows;
+};
 
-    let hashedPassword = user.password;
-    if (data.password) {
-      hashedPassword = await hashPassword(data.password);
-    }
+export const updateUser = async (
+  id: number,
+  updates: Partial<Omit<User, "id" | "created_at">>
+): Promise<User | null> => {
+  const fields: string[] = [];
+  const values: any[] = [];
+  let idx = 1;
 
-    const result = await db.query(
-      `UPDATE users
-       SET name=$1, email=$2, username=$3, password=$4, role=$5, avatar=$6
-       WHERE id=$7
-       RETURNING id, name, email, username, role, avatar`,
-      [
-        data.name ?? user.name,
-        data.email ?? user.email,
-        data.username ?? user.username,
-        hashedPassword,
-        data.role ?? user.role,
-        data.avatar ?? user.avatar,
-        id,
-      ]
-    );
+  if (updates.name) {
+    fields.push(`name = $${idx++}`);
+    values.push(updates.name);
+  }
+  if (updates.email) {
+    fields.push(`email = $${idx++}`);
+    values.push(updates.email);
+  }
+  if (updates.password) {
+    const hashedPassword = await bcrypt.hash(updates.password, 10);
+    fields.push(`password = $${idx++}`);
+    values.push(hashedPassword);
+  }
+  if (updates.role) {
+    fields.push(`role = $${idx++}`);
+    values.push(updates.role);
+  }
 
-    return result.rows[0];
-  },
+  if (fields.length === 0) return getUserById(id);
 
-  // Delete user
-  async deleteUser(id: number) {
-    const result = await db.query(
-      "DELETE FROM users WHERE id=$1 RETURNING id, avatar",
-      [id]
-    );
-    return result.rows[0];
-  },
+  values.push(id);
+
+  const result = await db.query<User>(
+    `UPDATE users SET ${fields.join(", ")} WHERE id = $${idx} RETURNING id, name, email, role, created_at`,
+    values
+  );
+
+  return result.rows[0] || null;
+};
+
+export const deleteUser = async (id: number): Promise<User | null> => {
+  const result = await db.query<User>(
+    "DELETE FROM users WHERE id = $1 RETURNING id, name, email, role, created_at",
+    [id]
+  );
+
+  return result.rows[0] || null;
 };
