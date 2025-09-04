@@ -21,6 +21,7 @@ interface Agent {
   email: string;
   department: string;
   role: string;
+  status: "active" | "inactive"; // ✅ add this
   join_date: string;
   ticket_count?: number;
   performance?: { day: string; tickets: number }[];
@@ -191,19 +192,19 @@ export default function AdminAgents() {
               </DialogTitle>
             </DialogHeader>
             <div className="p-4 space-y-4">
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <span
-                  className={cn(
-                    "inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold",
-                    selectedAgent.role === "active"
-                      ? "bg-green-100 text-green-700 dark:bg-green-700 dark:text-white"
-                      : "bg-red-100 text-red-700 dark:bg-red-700 dark:text-white"
-                  )}
-                >
-                  <span className="mr-1 w-2 h-2 rounded-full bg-current animate-ping"></span>
-                  {selectedAgent.role}
-                </span>
-              </div>
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <span
+                className={cn(
+                  "inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold",
+                  selectedAgent.status === "active"
+                    ? "bg-green-100 text-green-700 dark:bg-green-700 dark:text-white"
+                    : "bg-red-100 text-red-700 dark:bg-red-700 dark:text-white"
+                )}
+              >
+                <span className="mr-1 w-2 h-2 rounded-full bg-current animate-ping"></span>
+                {selectedAgent.status}
+              </span>
+            </div>
               <Input
                 value={selectedAgent.name}
                 onChange={(e) =>

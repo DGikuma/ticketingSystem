@@ -146,16 +146,23 @@ export default function AdminTickets() {
   const handleAssignAgent = async (agentId: string) => {
     if (!selectedTicket) return;
     console.log(`✍️ Assigning agent ${agentId} → ticket ${selectedTicket.id}`);
+
     try {
-      const res = await authFetch(`/api/tickets/${selectedTicket.id}/assign`, {
-        method: 'POST',
+      const res = await authFetch(`/api/tickets/${selectedTicket.id}/assignTicket`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ agentId }),
       });
-      console.log('📥 Assign response status:', res.status);
 
-      if (!res.ok) throw new Error('Failed to assign ticket');
+      console.log("📥 Assign response status:", res.status);
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Failed to assign ticket → ${res.status} ${errText}`);
+      }
+
       const updated = await res.json();
-      console.log('✅ Ticket updated:', updated);
+      console.log("✅ Ticket updated:", updated);
 
       toast.success(`Assigned to ${updated.assigned_to_name}`);
       setSelectedTicket(null);
@@ -163,8 +170,8 @@ export default function AdminTickets() {
       // 🔄 Refetch tickets with current filters
       fetchTickets(currentPage, statusFilter, debouncedSearch);
     } catch (err) {
-      console.error('❌ Error assigning agent:', err);
-      toast.error('Error assigning agent');
+      console.error("❌ Error assigning agent:", err);
+      toast.error("Error assigning agent");
     }
   };
 

@@ -72,7 +72,7 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
  * POST /api/tickets/:id/assign
  * Assign a ticket to an agent
  */
-router.post("/:id/assign", authMiddleware, async (req: Request, res: Response) => {
+router.post("/:id/assignTicket", authMiddleware, async (req: Request, res: Response) => {
   const { id } = req.params;
   const { agentId } = req.body;
 
@@ -81,7 +81,13 @@ router.post("/:id/assign", authMiddleware, async (req: Request, res: Response) =
   }
 
   try {
-    // verify the agent exists and has role = agent
+    // ✅ Check if ticket exists
+    const ticketRes = await db.query("SELECT id FROM tickets WHERE id = $1", [id]);
+    if (ticketRes.rowCount === 0) {
+      return res.status(404).json({ message: "Ticket not found" });
+    }
+
+    // ✅ Verify agent exists and has role = 'agent'
     const agentRes = await db.query(
       "SELECT id, name FROM users WHERE id = $1 AND role = 'agent'",
       [agentId]
@@ -90,7 +96,7 @@ router.post("/:id/assign", authMiddleware, async (req: Request, res: Response) =
       return res.status(404).json({ message: "Agent not found" });
     }
 
-    // update ticket assignment
+    // ✅ Assign ticket
     await db.query("UPDATE tickets SET assigned_to = $1 WHERE id = $2", [
       agentId,
       id,
@@ -98,7 +104,7 @@ router.post("/:id/assign", authMiddleware, async (req: Request, res: Response) =
 
     res.json({ assigned_to_name: agentRes.rows[0].name });
   } catch (err) {
-    console.error("Error assigning ticket:", err);
+    console.error("❌ Error assigning ticket:", err);
     res.status(500).json({ message: "Failed to assign ticket" });
   }
 });
