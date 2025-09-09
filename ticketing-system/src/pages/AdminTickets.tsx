@@ -64,32 +64,35 @@ export default function AdminTickets() {
   }, [search]);
 
   // ✅ Fetch tickets from backend (with pagination + filters + search)
-  const fetchTickets = async (page = 1, status = statusFilter, searchQuery = debouncedSearch) => {
+  const fetchTickets = async (
+    page = 1,
+    status = statusFilter,
+    searchQuery = debouncedSearch
+  ) => {
     try {
-      setLoading(true); // 🔥 show spinner
+      setLoading(true);
       console.log('📡 Fetching tickets from backend...');
 
       const query = new URLSearchParams({
         page: String(page),
         limit: String(ticketsPerPage),
       });
-      if (status !== 'All') query.append('status', status.toLowerCase());
+      if (status !== 'All') query.append('status', status);
       if (searchQuery.trim()) query.append('search', searchQuery.trim());
 
-      const res = await authFetch(`/api/ticket?${query.toString()}`);
+      const res = await authFetch(`/api/tickets?${query.toString()}`);
       console.log('📥 Tickets response status:', res.status);
 
       if (res.status === 401) {
         toast.error('Unauthorized - please log in again');
         return;
       }
-
       if (!res.ok) throw new Error('Failed to fetch tickets');
 
       const data = await res.json();
       console.log('✅ Raw tickets data:', data);
 
-      const ticketsArray = Array.isArray(data.data) ? data.data : [];
+      const ticketsArray = Array.isArray(data.tickets) ? data.tickets : [];
       const normalizedTickets = ticketsArray.map((ticket: any) => ({
         ...ticket,
         status:
@@ -100,18 +103,19 @@ export default function AdminTickets() {
             : ticket.status === 'closed'
             ? 'Closed'
             : ticket.status,
-        assigned_to_name: ticket.assigned_to_name || ticket.agent_name || null,
+        assigned_to_name: ticket.assigned_to_name || 'Unassigned', 
       }));
 
-      console.log('🔧 Normalized tickets:', normalizedTickets);
+      console.log('🔧 Normalized tickets with agent names:', normalizedTickets);
 
       setTickets(normalizedTickets);
-      setTotalTickets(data.meta?.total ?? normalizedTickets.length);
+      setTotalTickets(data.total ?? normalizedTickets.length);
+      setCurrentPage(data.page ?? page);
     } catch (err) {
       console.error('❌ Error fetching tickets:', err);
       toast.error('Error fetching tickets');
     } finally {
-      setLoading(false); // 🔥 hide spinner
+      setLoading(false);
     }
   };
 
@@ -145,30 +149,32 @@ export default function AdminTickets() {
   // ✅ Assign agent → refetch current page
   const handleAssignAgent = async (agentId: string) => {
     if (!selectedTicket) return;
-    console.log(`✍️ Assigning agent ${agentId} → ticket ${selectedTicket.id}`);
 
     try {
-      const res = await authFetch(`/api/tickets/${selectedTicket.id}/assignTicket`, {
-        method: "POST",
+      const res = await authFetch(`/api/tickets/${selectedTicket.id}/assign`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agentId }),
+        body: JSON.stringify({ agentId: parseInt(agentId) }),
       });
-
-      console.log("📥 Assign response status:", res.status);
 
       if (!res.ok) {
         const errText = await res.text();
-        throw new Error(`Failed to assign ticket → ${res.status} ${errText}`);
+        throw new Error(`Failed → ${res.status} ${errText}`);
       }
 
       const updated = await res.json();
-      console.log("✅ Ticket updated:", updated);
-
       toast.success(`Assigned to ${updated.assigned_to_name}`);
-      setSelectedTicket(null);
+      
+      // 🔹 Optimistic UI update
+      setTickets((prev) =>
+        prev.map((t) =>
+          t.id === selectedTicket.id
+            ? { ...t, assigned_to_name: updated.assigned_to_name }
+            : t
+        )
+      );
 
-      // 🔄 Refetch tickets with current filters
-      fetchTickets(currentPage, statusFilter, debouncedSearch);
+      setSelectedTicket(null);
     } catch (err) {
       console.error("❌ Error assigning agent:", err);
       toast.error("Error assigning agent");

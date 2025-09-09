@@ -2,11 +2,10 @@ import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ChevronDown, Paperclip, Calendar, MessageSquareText } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Paperclip, Calendar, MessageSquareText } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { cn } from "@/lib/utils";
 
 interface Attachment {
   name: string;
@@ -23,13 +22,15 @@ interface Comment {
 
 interface TicketData {
   id: string;
-  subject: string;
+  title?: string;
+  subject?: string;
   description: string;
   status: string;
   priority: string;
-  dueDate: Date;
-  attachments: Attachment[];
-  comments: Comment[];
+  createdAt?: string;
+  dueDate?: Date;
+  attachments?: Attachment[];
+  comments?: Comment[];
 }
 
 interface Props {
@@ -39,12 +40,15 @@ interface Props {
 }
 
 const ViewTicketModal: React.FC<Props> = ({ open, onClose, ticket }) => {
+  const attachments = ticket.attachments || [];
+  const comments = ticket.comments || [];
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl w-full dark:bg-zinc-900 bg-white p-6 rounded-2xl shadow-xl overflow-y-auto max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="text-2xl font-semibold text-primary">
-            📝 View Ticket - {ticket.subject}
+            📝 View Ticket - {ticket.subject || ticket.title}
           </DialogTitle>
         </DialogHeader>
 
@@ -66,20 +70,22 @@ const ViewTicketModal: React.FC<Props> = ({ open, onClose, ticket }) => {
         </div>
 
         {/* Due Date */}
-        <div className="mt-6">
-          <div className="flex items-center gap-2 mb-1">
-            <Calendar className="w-5 h-5 text-teal-500" />
-            <h4 className="text-md font-medium text-muted-foreground">Due Date</h4>
+        {ticket.dueDate && (
+          <div className="mt-6">
+            <div className="flex items-center gap-2 mb-1">
+              <Calendar className="w-5 h-5 text-teal-500" />
+              <h4 className="text-md font-medium text-muted-foreground">Due Date</h4>
+            </div>
+            <DatePicker
+              selected={ticket.dueDate}
+              onChange={() => {}}
+              readOnly
+              className="cursor-not-allowed"
+              showPopperArrow={false}
+              dateFormat="PPPP"
+            />
           </div>
-          <DatePicker
-            selected={ticket.dueDate}
-            onChange={() => {}}
-            readOnly
-            className="cursor-not-allowed"
-            showPopperArrow={false}
-            dateFormat="PPPP"
-          />
-        </div>
+        )}
 
         {/* Attachments */}
         <div className="mt-6">
@@ -87,11 +93,11 @@ const ViewTicketModal: React.FC<Props> = ({ open, onClose, ticket }) => {
             <Paperclip className="w-5 h-5 text-pink-500" />
             <h4 className="text-md font-medium text-muted-foreground">Attachments</h4>
           </div>
-          {ticket.attachments.length === 0 ? (
+          {attachments.length === 0 ? (
             <p className="text-sm text-gray-500 dark:text-gray-400 italic">No attachments</p>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-2">
-              {ticket.attachments.map((file, index) => (
+              {attachments.map((file, index) => (
                 <div
                   key={index}
                   className="border p-2 rounded-lg dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 text-center"
@@ -117,11 +123,11 @@ const ViewTicketModal: React.FC<Props> = ({ open, onClose, ticket }) => {
             <MessageSquareText className="w-5 h-5 text-green-500" />
             <h4 className="text-md font-medium text-muted-foreground">Comments</h4>
           </div>
-          {ticket.comments.length === 0 ? (
+          {comments.length === 0 ? (
             <p className="text-sm text-gray-500 dark:text-gray-400 italic">No comments yet.</p>
           ) : (
             <div className="space-y-3 mt-3 max-h-60 overflow-y-auto pr-2">
-              {ticket.comments.map((comment) => (
+              {comments.map((comment) => (
                 <div
                   key={comment.id}
                   className="bg-gray-100 dark:bg-zinc-800 p-3 rounded-lg shadow-sm"

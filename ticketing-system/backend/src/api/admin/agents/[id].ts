@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { db } from "../../../db"; // adjust path if needed
+import { db } from "../../../db"; // adjust path as needed
 
 const router = Router();
 
@@ -20,10 +20,10 @@ router.get("/", async (_req: Request, res: Response) => {
         COALESCE(t.ticket_count, 0) AS ticket_count
       FROM users u
       LEFT JOIN (
-        SELECT user_id, COUNT(*) AS ticket_count
+        SELECT assigned_to, COUNT(*) AS ticket_count
         FROM tickets
-        GROUP BY user_id
-      ) t ON t.user_id = u.id
+        GROUP BY assigned_to
+      ) t ON t.assigned_to = u.id
       WHERE u.role = 'agent'
       ORDER BY u.id ASC;
     `);
@@ -45,13 +45,40 @@ router.put("/:id", async (req: Request, res: Response) => {
 
   try {
     const result = await db.query(
-      "UPDATE users SET name = $1, email = $2, department = $3 WHERE id = $4 AND role = 'agent' RETURNING *",
+      `UPDATE users 
+       SET name = $1, email = $2, department = $3, updated_at = NOW() 
+       WHERE id = $4 AND role = 'agent' 
+       RETURNING id, name, email, department, role, status`,
       [name, email, department, id]
     );
 
-    if (result.rowCount === 0) return res.status(404).json({ error: "Agent not found" });
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
 
-    res.json(result.rows[0]);
+    // Re-attach ticket_count
+    const updatedAgent = await db.query(
+      `
+      SELECT 
+        u.id,
+        u.name,
+        u.email,
+        u.department,
+        u.role,
+        u.status,
+        COALESCE(t.ticket_count, 0) AS ticket_count
+      FROM users u
+      LEFT JOIN (
+        SELECT assigned_to, COUNT(*) AS ticket_count
+        FROM tickets
+        GROUP BY assigned_to
+      ) t ON t.assigned_to = u.id
+      WHERE u.id = $1
+      `,
+      [id]
+    );
+
+    res.json(updatedAgent.rows[0]);
   } catch (err: any) {
     console.error("❌ Error updating agent:", err.message);
     res.status(500).json({ error: "Failed to update agent" });
@@ -60,16 +87,16 @@ router.put("/:id", async (req: Request, res: Response) => {
 
 /**
  * DELETE /api/admin/agents/:id
+ * Delete an agent
  */
 router.delete("/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    if (!id) return res.status(400).json({ error: "Missing agent ID" });
 
     const deleteResult = await db.query(
       `DELETE FROM users
        WHERE id = $1 AND role = 'agent'
-       RETURNING *`,
+       RETURNING id`,
       [id]
     );
 
@@ -77,6 +104,7 @@ router.delete("/:id", async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Agent not found" });
     }
 
+    // Return updated list of agents
     const allAgents = await db.query(`
       SELECT 
         u.id,
@@ -88,10 +116,10 @@ router.delete("/:id", async (req: Request, res: Response) => {
         COALESCE(t.ticket_count, 0) AS ticket_count
       FROM users u
       LEFT JOIN (
-        SELECT user_id, COUNT(*) AS ticket_count
+        SELECT assigned_to, COUNT(*) AS ticket_count
         FROM tickets
-        GROUP BY user_id
-      ) t ON t.user_id = u.id
+        GROUP BY assigned_to
+      ) t ON t.assigned_to = u.id
       WHERE u.role = 'agent'
       ORDER BY u.id ASC;
     `);
@@ -115,8 +143,11 @@ router.put("/toggle/:id", async (req: Request, res: Response) => {
   }
 
   try {
-    // get current status
-    const current = await db.query("SELECT status FROM users WHERE id = $1 AND role = 'agent'", [id]);
+    const current = await db.query(
+      "SELECT status FROM users WHERE id = $1 AND role = 'agent'",
+      [id]
+    );
+
     if (current.rows.length === 0) {
       return res.status(404).json({ error: "Agent not found" });
     }
@@ -124,16 +155,37 @@ router.put("/toggle/:id", async (req: Request, res: Response) => {
     const currentStatus = current.rows[0].status;
     const newStatus = currentStatus === "active" ? "inactive" : "active";
 
-    // update only status
-    const updated = await db.query(
-      "UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING id, status",
+    await db.query(
+      "UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2",
       [newStatus, id]
     );
 
-    return res.status(200).json(updated.rows[0]); // only { id, status }
+    // Return updated agent with ticket_count
+    const updatedAgent = await db.query(
+      `
+      SELECT 
+        u.id,
+        u.name,
+        u.email,
+        u.department,
+        u.role,
+        u.status,
+        COALESCE(t.ticket_count, 0) AS ticket_count
+      FROM users u
+      LEFT JOIN (
+        SELECT assigned_to, COUNT(*) AS ticket_count
+        FROM tickets
+        GROUP BY assigned_to
+      ) t ON t.assigned_to = u.id
+      WHERE u.id = $1
+      `,
+      [id]
+    );
+
+    res.status(200).json(updatedAgent.rows[0]);
   } catch (err: any) {
     console.error("❌ Toggle status error:", err.message);
-    return res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

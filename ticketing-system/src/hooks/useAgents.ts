@@ -7,9 +7,9 @@ export interface Agent {
   name: string;
   email: string;
   department: string;
-  status: "active" | "inactive"; // ✅ add status explicitly
+  status: "active" | "inactive";
   join_date?: string;
-  ticket_count?: number;
+  ticket_count: number; // ✅ always numeric now
   performance?: { day: string; tickets: number }[];
 }
 
@@ -34,7 +34,11 @@ export default function useAgents(agentsPerPage = 10) {
 
   const refreshToken = async (): Promise<string | null> => {
     try {
-      const res = await axios.post(`${BASE_URL}/api/auth/refresh`, {}, { withCredentials: true });
+      const res = await axios.post(
+        `${BASE_URL}/api/auth/refresh`,
+        {},
+        { withCredentials: true }
+      );
       if (res.data.token) {
         localStorage.setItem("token", res.data.token);
         return res.data.token;
@@ -86,10 +90,15 @@ export default function useAgents(agentsPerPage = 10) {
         agents = [];
       }
 
-      // ✅ Defensive filter
-      agents = agents.filter(
-        (a) => a && typeof a.id === "number" && typeof a.name === "string" && typeof a.email === "string"
-      );
+      console.log("📦 Raw agents from backend:", agents); // 👈 debug log
+
+      // ✅ Ensure ticket_count is always a number
+      agents = agents.map((a) => ({
+        ...a,
+        ticket_count: Number(a.ticket_count) || 0,
+      }));
+
+      console.log("✅ Normalized agents:", agents); // 👈 after normalization
 
       setAllAgents(agents);
     } catch (err: any) {
@@ -126,31 +135,33 @@ export default function useAgents(agentsPerPage = 10) {
   }, [search]);
 
   /** ------------------ Save Edit ------------------ */
-    const handleSaveEdit = async () => {
+  const handleSaveEdit = async () => {
     if (!selectedAgent) return;
     try {
-        // ✅ Only send editable fields
-        const res = await authRequest({
+      const res = await authRequest({
         url: `/api/admin/agents/${selectedAgent.id}`,
         method: "PUT",
         data: {
-            name: selectedAgent.name,
-            email: selectedAgent.email,
-            department: selectedAgent.department,
+          name: selectedAgent.name,
+          email: selectedAgent.email,
+          department: selectedAgent.department,
         },
-        });
+      });
 
-        const updated: Agent = res.data;
+      const updated: Agent = {
+        ...res.data,
+        ticket_count: Number(res.data.ticket_count) || 0, // ✅ enforce numeric
+      };
 
-        setAllAgents((prev) =>
+      setAllAgents((prev) =>
         prev.map((a) => (a.id === updated.id ? updated : a))
-        );
-        setSelectedAgent(null);
-        toast.success("Agent updated successfully");
+      );
+      setSelectedAgent(null);
+      toast.success("Agent updated successfully");
     } catch (err: any) {
-        toast.error(err.response?.data?.error || "Failed to save agent");
+      toast.error(err.response?.data?.error || "Failed to save agent");
     }
-    };
+  };
 
   /** ------------------ Delete ------------------ */
   const handleDelete = async (agent: Agent) => {
@@ -164,51 +175,51 @@ export default function useAgents(agentsPerPage = 10) {
     }
   };
 
-    /** ------------------ Toggle Status ------------------ */
-    const handleToggleStatus = async (agent: Agent) => {
+  /** ------------------ Toggle Status ------------------ */
+  const handleToggleStatus = async (agent: Agent) => {
     if (!agent) return;
     const previousStatus = agent.status;
     const newStatus = previousStatus === "active" ? "inactive" : "active";
 
     setTogglingAgentId(agent.id);
 
-    // 🔹 Optimistic update: only status
+    // 🔹 Optimistic update
     setAllAgents((prev) =>
-        prev.map((a) =>
+      prev.map((a) =>
         a.id === agent.id ? { ...a, status: newStatus } : a
-        )
+      )
     );
 
     try {
-        const res = await authRequest({
+      const res = await authRequest({
         url: `/api/admin/agents/toggle/${agent.id}`,
         method: "PUT",
-        });
+      });
 
-        const updated: Agent = res.data;
+      const updated: Agent = {
+        ...res.data,
+        ticket_count: Number(res.data.ticket_count) || agent.ticket_count,
+      };
 
-        // 🔹 Merge only status instead of replacing whole agent
-        setAllAgents((prev) =>
-        prev.map((a) =>
-            a.id === updated.id ? { ...a, status: updated.status } : a
-        )
-        );
+      setAllAgents((prev) =>
+        prev.map((a) => (a.id === updated.id ? updated : a))
+      );
 
-        toast.success(
+      toast.success(
         `Agent ${updated.status === "active" ? "reactivated ✅" : "deactivated 🚫"}`
-        );
+      );
     } catch (err: any) {
-        // 🔹 Rollback on error
-        setAllAgents((prev) =>
+      // 🔹 Rollback on error
+      setAllAgents((prev) =>
         prev.map((a) =>
-            a.id === agent.id ? { ...a, status: previousStatus } : a
+          a.id === agent.id ? { ...a, status: previousStatus } : a
         )
-        );
-        toast.error(err.response?.data?.error || "Failed to update status");
+      );
+      toast.error(err.response?.data?.error || "Failed to update status");
     } finally {
-        setTogglingAgentId(null);
+      setTogglingAgentId(null);
     }
-    };
+  };
 
   return {
     agents,

@@ -5,7 +5,7 @@ const router = express.Router();
 // Fetch all users
 router.get('/', async (_, res) => {
   try {
-    const result = await db.query('SELECT id, name, email, role, department FROM users ORDER BY id DESC');
+    const result = await db.query('SELECT id, name, email, role, department, created_at FROM users ORDER BY id DESC');
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch users', error: err });

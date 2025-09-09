@@ -101,7 +101,7 @@ export default function AdminLayout() {
 
   const fetchUnreadCount = async () => {
     try {
-      const res = await fetch('http://localhost:4000/api/notifications/unread-count', {
+      const res = await fetch('', {
         headers: { Authorization: `Bearer ${token}` },
       });
 

@@ -30,6 +30,7 @@ export default function AdminUsers() {
               <td>{user.name}</td>
               <td>{user.email}</td>
               <td>{user.role}</td>
+              <td></td>
             </tr>
           ))}
         </tbody>

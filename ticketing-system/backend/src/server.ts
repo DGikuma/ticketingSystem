@@ -13,7 +13,6 @@ console.log("EMAIL_PASSWORD:", process.env.EMAIL_PASSWORD ? "Loaded ✅" : "❌ 
 
 // Import Routes
 import authRoutes from "./routes/authRoutes";
-import ticketRoutes from "./routes/ticketRoutes";
 import resetRoutes from "./routes/resetRoutes";
 import userRoutes from "./routes/userRoutes";
 import uploadRoutes from "./routes/uploadRoutes";
@@ -24,6 +23,7 @@ import ticketsRoutes from "./routes/ticketsRoutes";
 import { authMiddleware } from "./middleware/authMiddleware";
 import adminUsers from "./routes/adminUsers";
 import adminAgents from "./routes/adminAgents";
+import { getTickets } from "./api/tickets/ticket";
 
 // Init mailer
 import "./utils/mailer";
@@ -74,29 +74,28 @@ app.use("/uploads", express.static("uploads"));
 
 // ✅ API Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/tickets", ticketRoutes);
+app.use("/api/tickets", ticketsRoutes);
 app.use("/api/reset", resetRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/user-tickets", getUserTickets);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/agents", agentsRoutes);
-app.use("/api/ticket", ticketsRoutes);
 app.use("/api/admin/users", authMiddleware, adminUsers);
 app.use("/api/admin/agents", /*authMiddleware,*/ adminAgents);
+app.get("/api/tickets", getTickets);
 
 // ✅ Route logging
 console.log("\n✅ Loaded Routes:");
 console.table([
   { Path: "/api/auth", Route: "authRoutes" },
-  { Path: "/api/tickets", Route: "ticketRoutes" },
+  { Path: "/api/tickets", Route: "ticketsRoutes" },
   { Path: "/api/reset", Route: "resetRoutes" },
   { Path: "/api/users", Route: "userRoutes" },
   { Path: "/api/upload", Route: "uploadRoutes" },
   { Path: "/api/user-tickets", Route: "getUserTickets" },
   { Path: "/api/notifications", Route: "notificationRoutes" },
   { Path: "/api/agents", Route: "agentsRoutes" },
-  { Path: "/api/ticket", Route: "ticketsRoutes" },
   { Path: "/api/admin/users", Route: "adminUsers" },
   { Path: "/api/admin/agents", Route: "adminAgents" },
 ]);
