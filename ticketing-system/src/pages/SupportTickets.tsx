@@ -10,7 +10,7 @@ import { toast } from 'react-toastify';
 
 type Ticket = {
   id: string;
-  title: string;
+  subject: string;      // ✅ matches backend
   status: string;
   createdAt: string;
   description: string;
@@ -37,22 +37,40 @@ const SupportTickets: React.FC = () => {
   // ✅ Fetch assigned tickets from API
   const fetchTickets = async () => {
     try {
-      setLoading(true);
-      setError('');
-      const res = await fetch('/api/tickets/assigned', {
-        credentials: 'include', // if you're using httpOnly cookies
-      });
+      const apiUrl = '/api/assigned'; 
+      console.log("⏩ Fetching tickets from backend...", apiUrl);
 
-      if (!res.ok) {
-        throw new Error('Failed to fetch tickets');
+      const token = localStorage.getItem('token');
+      console.log("🔑 Token from localStorage:", token);
+
+      if (!token) {
+        throw new Error('No authentication token found');
       }
 
+      const res = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log("📡 Fetch response status:", res.status);
+
       const data = await res.json();
-      setTickets(data.tickets || []); // expecting { tickets: [...] }
+      console.log("📥 Backend returned:", data);
+
+      if (!res.ok) {
+        throw new Error(data.message || 'Failed to fetch tickets');
+      }
+
+      setTickets(data.tickets || []);
+      console.log("✅ Tickets state updated, count:", data.tickets?.length || 0);
+
     } catch (err: any) {
-      console.error(err);
-      setError('Unable to load tickets');
-      toast.error('Failed to load tickets.');
+      console.error("❌ Error in fetchTickets:", err);
+      setError(err.message || 'Unable to load tickets');
+      toast.error(`Failed to load tickets: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -64,7 +82,7 @@ const SupportTickets: React.FC = () => {
 
   const filteredTickets = useMemo(() => {
     return tickets.filter(ticket =>
-      ticket.title.toLowerCase().includes(search.toLowerCase())
+      ticket.subject.toLowerCase().includes(search.toLowerCase())
     );
   }, [tickets, search]);
 
@@ -86,6 +104,13 @@ const SupportTickets: React.FC = () => {
       {loading && <p className="text-gray-500">Loading tickets...</p>}
       {error && <p className="text-red-500">{error}</p>}
 
+      {/* ✅ Graceful fallback */}
+      {!loading && !error && filteredTickets.length === 0 && (
+        <p className="text-gray-500 dark:text-gray-400 italic text-center py-10">
+          No tickets assigned.
+        </p>
+      )}
+
       <div className="grid gap-4">
         {filteredTickets.map((ticket) => (
           <motion.div
@@ -96,7 +121,7 @@ const SupportTickets: React.FC = () => {
           >
             <div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {ticket.title}
+                {ticket.subject}
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Created: {new Date(ticket.createdAt).toLocaleDateString()}
