@@ -24,6 +24,7 @@ import { authMiddleware } from "./middleware/authMiddleware";
 import adminUsers from "./routes/adminUsers";
 import adminAgents from "./routes/adminAgents";
 import assigned_Ticket_Routes from "./routes/assigned_Ticket_Routes";
+import adminDashboardKpisRoutes from "./routes/adminDashboardKpisRoutes";
 import { getTickets } from "./api/tickets/ticket";
 
 // Init mailer
@@ -85,7 +86,8 @@ app.use("/api/agents", agentsRoutes);
 app.use("/api/admin/users", authMiddleware, adminUsers);
 app.use("/api/admin/agents", /*authMiddleware,*/ adminAgents);
 app.get("/api/tickets", getTickets);
-app.use("/api/assigned", assigned_Ticket_Routes)
+app.use("/api/assigned", assigned_Ticket_Routes);
+app.use("/api/admin/dashboard", adminDashboardKpisRoutes);
 
 // ✅ Route logging
 console.log("\n✅ Loaded Routes:");
@@ -100,7 +102,8 @@ console.table([
   { Path: "/api/agents", Route: "agentsRoutes" },
   { Path: "/api/admin/users", Route: "adminUsers" },
   { Path: "/api/admin/agents", Route: "adminAgents" },
-  { Path: "/api/assigned", Route: "assigned_Ticket_Routes" }
+  { Path: "/api/assigned", Route: "assigned_Ticket_Routes" },
+  { Path: "/api/admin/dashboard", Route: "adminDashboardKpisRoutes" },
 ]);
 
 // Root Route

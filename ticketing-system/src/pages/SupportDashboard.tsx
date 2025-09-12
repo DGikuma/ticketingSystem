@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import { Ticket } from "@/types/ticket";
+import { Ticket } from "@/types/tickets";
 
 
 const mockTickets: Ticket[] = [
